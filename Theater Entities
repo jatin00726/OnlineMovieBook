@@ -20,38 +20,122 @@ namespace Book_My_Show_Entities
     }
 }
 
+Theater Controller
 
+using Book_My_Show_BL.Interfaces;
+using Book_My_Show_Entities;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { environment } from 'src/environments/environment';
+namespace Book_My_Show.Controllers
+{
 
-@Injectable({
-  providedIn: 'root'
-})
-export class TheatreService {
-  apiUrl = "https://localhost:44353/api/";
+    [Route("api/[controller]")]
+    [ApiController]
+    
+    public class TheatreController : ControllerBase
+    {
+    
+        private ITheatreServiceBL _theatreServices;
 
-  constructor(private http: HttpClient) { }
+        public TheatreController(ITheatreServiceBL theatreServices)
+        {
+            _theatreServices = theatreServices;
+        }
 
-  getTheatres(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}Theatre`);
-  }
+        [HttpPost]
+        public JsonResult Post(Theatre theatre)
+        {
+            _theatreServices.Add(theatre);
+            return new JsonResult("Added Successfully");
+        }
 
-  getTheatre(id: number): Observable<any> {
-    return this.http.get<any>(`${this.apiUrl}Theatre/${id}`);
-  }
+        [HttpGet("id/{id}")]
+        public JsonResult Get(int id)
+        {
+            var movie = _theatreServices.GetById(id);
+            return new JsonResult(movie);
+        }
 
-  addTheatre(theatre: any): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}Theatre`, theatre);
-  }
+        [HttpGet("city/{city}")]
+        public JsonResult Get(string city)
+        {
+            var movie = _theatreServices.GetByCity(city);
+            return new JsonResult(movie);
+        }
 
-  editTheatre(theatre: any): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}Theatre/${theatre.id}`, theatre);
-  }
+        [HttpGet]
+        public JsonResult Get()
+        {
+            var moviesList = _theatreServices.GetAll();
+            return new JsonResult(moviesList);
+        }
 
-  deleteTheatre(id: number): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}Theatre/${id}`);
-  }
+        [HttpDelete("{id}")]
+        public JsonResult Delete(int id)
+        {
+            _theatreServices.Delete(id);
+            return new JsonResult("Deleted Successfully");
+        }
+    }
+}
+
+DAL
+
+using Book_My_Show_DAL.Interfaces;
+using Book_My_Show_Entities;
+using Dapper;
+using Microsoft.Extensions.Configuration;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Book_My_Show_DAL.Implementations
+{
+    public class TheatreServices : ITheatreServices
+    {
+        private IDbConnection _db;
+
+        public TheatreServices(IConfiguration configuration)
+        {
+            _db = new SqlConnection(configuration.GetConnectionString("DefaultConnection"));
+        }
+
+        public void Add(Theatre theatre)
+        {
+            var sqlQuery = "INSERT INTO Theatre (Name,City) VALUES (@Name,@City)";
+            _db.Execute(sqlQuery, theatre);
+        }
+
+        public void Delete(int Id)
+        {
+            var sqlQuery = "DELETE FROM Theatre where Id = @Id";
+            _db.Execute(sqlQuery, new { Id });
+        }
+
+        public List<Theatre> GetAll()
+        {
+            var sqlQuery = "SELECT * FROM Theatre";
+            return _db.Query<Theatre>(sqlQuery).ToList();
+        }
+
+        public List<Theatre> GetByCity(string City)
+        {
+            var sqlQuery = "SELECT * FROM Theatre where City = @City";
+            return _db.Query<Theatre>(sqlQuery, new { @City = City }).ToList();
+        }
+
+        public Theatre GetById(int Id)
+        {
+            var sqlQuery = "SELECT * FROM Theatre where Id = @Id";
+            return _db.Query<Theatre>(sqlQuery, new { @Id = Id }).SingleOrDefault();
+        }
+    }
 }
