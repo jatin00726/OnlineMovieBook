@@ -7,7 +7,7 @@ import { environment } from 'src/environments/environment';
   providedIn: 'root'
 })
 export class TheatreService {
-  private apiUrl = `${environment.apiUrl}/theatre`;
+  apiUrl = `${environment.apiUrl}/theatre`; // Make sure the environment variable is set correctly
 
   constructor(private http: HttpClient) { }
 
@@ -15,11 +15,11 @@ export class TheatreService {
     return this.http.get<any[]>(this.apiUrl);
   }
 
-  getTheatreById(id: number): Observable<any> {
+  getTheatre(id: number): Observable<any> {
     return this.http.get<any>(`${this.apiUrl}/id/${id}`);
   }
 
-  getTheatreByCity(city: string): Observable<any[]> {
+  getTheatresByCity(city: string): Observable<any[]> {
     return this.http.get<any[]>(`${this.apiUrl}/city/${city}`);
   }
 
@@ -28,10 +28,10 @@ export class TheatreService {
   }
 
   editTheatre(theatre: any): Observable<any> {
-    return this.http.put<any>(`${this.apiUrl}/${theatre.id}`, theatre);
+    return this.http.put<any>(`${this.apiUrl}/id/${theatre.id}`, theatre);
   }
 
   deleteTheatre(id: number): Observable<any> {
-    return this.http.delete<any>(`${this.apiUrl}/${id}`);
+    return this.http.delete<any>(`${this.apiUrl}/id/${id}`);
   }
 }
