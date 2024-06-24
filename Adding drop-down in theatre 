@@ -1,0 +1,12 @@
+<div class="form-group">
+    <label for="citySelect">Select City</label>
+    <select
+      id="citySelect"
+      class="form-control"
+      [(ngModel)]="selectedCity"
+      (ngModelChange)="onCityChange($event)"
+    >
+      <option value="">All Cities</option>
+      <option *ngFor="let city of cities" [value]="city">{{ city }}</option>
+    </select>
+  </div>
