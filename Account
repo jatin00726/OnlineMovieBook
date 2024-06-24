@@ -1,0 +1,240 @@
+----UserModel----
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace Book_My_Show_Entities
+{
+    public class UserModel
+    {
+        [Required]
+        [Display(Name = "UserId")]
+        [Key]
+        public int UserId
+        {
+            get;
+            set;
+        }
+        [Required]
+        [Display(Name = "Username")]
+        public string Username
+        {
+            get;
+            set;
+        }
+        [Required]
+        [DataType(DataType.Password)]
+        public string Password
+        {
+            get;
+            set;
+        }
+
+        public string Role {  get; set; }
+    }
+}
+
+
+---AccountCOntroller----
+using Book_My_Show_DAL.Context;
+using Book_My_Show_Entities;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Web.Providers.Entities;
+
+namespace Book_My_Show.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class AccountController : ControllerBase
+    {
+        private AccountContext db = new AccountContext();
+        [HttpPost("Login")]
+        public async Task<ActionResult> Login(UserModel user)
+        {
+
+            var result = GetUserbyNameandPassword(user);
+            //if (result.)
+            //{
+            //    return Ok(new { Message = result });
+            //}
+            return Ok(new { UserId = result.UserId, Message = result, RoleId = result.Role });
+        }
+        [HttpPost("CreateUser")]
+
+        public async Task<ActionResult> CreateUser(UserModel user)
+        {
+
+            var result = AddUser(user);
+            //if (!result.Success)
+            //{
+            //    return BadRequest(result.Message);
+            //}
+            return Ok(new { UserId = result.UserId, Message = result });
+        }
+
+        [HttpPost("CreateAdmin")]
+
+        public async Task<ActionResult> CreateAdmin(UserModel user)
+        {
+
+            var result = AddAdmin(user);
+            //if (!result.Success)
+            //{
+            //    return BadRequest(result.Message);
+            //}
+            return Ok(new { UserId = result.UserId, Message = result });
+        }
+
+        [HttpGet("CreateUser")]
+        public UserModel GetUserbyNameandPassword(UserModel user)
+        {
+            return db.Users.FirstOrDefault(u => u.Username == user.Username && u.Password == user.Password);
+        }
+
+        [HttpGet("Adduser")]
+        public UserModel AddUser(UserModel objUser)
+        {
+            objUser.Role = "User";
+            db.Users.Add(objUser);
+            db.SaveChanges();
+            return objUser;
+        }
+
+        [HttpGet("Addadmin")]
+        public UserModel AddAdmin(UserModel objUser)
+        {
+            objUser.Role = "Admin";
+            db.Users.Add(objUser);
+            db.SaveChanges();
+            return objUser;
+        }
+
+        [HttpGet("Logout")]
+        public async Task<IActionResult> LogOut()
+        {
+            //SignOutAsync is Extension method for SignOut    
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            //Redirect to home page    
+            return LocalRedirect("/");
+        }
+
+    }
+}
+
+---AuthenticateService(Angular)-----
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private authUrl = 'https://your-backend-api/auth';
+
+  constructor(private http: HttpClient) { }
+
+  login(credentials: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}/login`, credentials).pipe(
+      tap(response => {
+        if (response.token) {
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('role', response.role);
+        }
+      })
+    );
+  }
+
+  register(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}/register`, user);
+  }
+
+  logout(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+  }
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('token');
+  }
+
+  getUserRole(): string | null {
+    return localStorage.getItem('role');
+  }
+}
+
+
+----LoginComponent-----
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+import { NgForm } from '@angular/forms';
+
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.css']
+})
+export class LoginComponent {
+  username: string = '';
+  password: string = '';
+
+  constructor(private authService: AuthService, private router: Router) { }
+
+  onSubmit(form: NgForm): void {
+    if (form.valid) {
+      this.authService.login({ username: this.username, password: this.password }).subscribe(response => {
+        if (response.token) {
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('role', response.role);
+          if (response.role === 'admin') {
+            this.router.navigate(['/admin']);
+          } else {
+            this.router.navigate(['/user']);
+          }
+        }
+      });
+    }
+  }
+}
+
+
+----LoginHtml(Angular)-----
+<div class="container text-center vh-100 d-flex flex-column justify-content-center align-items-center">
+  <h1 class="mb-4 text-center">Welcome to BookMyShow</h1>
+  <div class="container mt-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h2 class="card-title text-center mb-4">Login</h2>
+            <form (ngSubmit)="onSubmit(loginForm)" #loginForm="ngForm">
+              <div class="mb-3">
+                <label for="username" class="visually-hidden">Username:</label>
+                <input type="text" id="username" class="form-control mb-2" [(ngModel)]="username" name="username" placeholder="Username" required>
+              </div>
+              <div class="mb-3">
+                <label for="password" class="visually-hidden">Password:</label>
+                <input type="password" id="password" class="form-control mb-2" [(ngModel)]="password" name="password" placeholder="Password" required>
+              </div>
+              <button type="submit" class="btn btn-primary mb-3">Login</button>
+            </form>
+            <p class="text-center">Don't have an account? <a routerLink="/register">Register here</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+Above is the code for UserModel(Entity), AccountController(WebAPI), AuthenticateService(Angular), LoginComponent,LoginHtml. Update the LoginHtml  in Angular  to add a dropdownlist which will have two values Admin and user, The user will fill the details in login page and select from the dropdown. When the user select the Admin it will be redirected to the Admin Page and if user the it will be redirected to the user page. 
