@@ -1,0 +1,139 @@
+To achieve the desired functionality where the `RegisterComponent` calls the appropriate API endpoint based on the user's role and then redirects to the login page, we need to update both the `RegisterComponent` and the `AuthService`.
+
+### Updated AuthService
+
+In the `AuthService`, we'll create separate methods for registering users and admins:
+
+```typescript
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private authUrl = 'https://localhost:44353/api/Account/';
+
+  constructor(private http: HttpClient) { }
+
+  login(credentials: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}Login`, credentials).pipe(
+      tap(response => {
+        if (response.role) {
+          localStorage.setItem('role', response.role);
+        }
+      })
+    );
+  }
+
+  registerUser(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}CreateUser`, user);
+  }
+
+  registerAdmin(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}CreateAdmin`, user);
+  }
+
+  logout(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+  }
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('token');
+  }
+
+  getUserRole(): string | null {
+    return localStorage.getItem('role');
+  }
+}
+```
+
+### Updated RegisterComponent
+
+In the `RegisterComponent`, we'll call the appropriate service method based on the selected role and then navigate to the login page:
+
+```typescript
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+import { NgForm } from '@angular/forms';
+
+@Component({
+  selector: 'app-register',
+  templateUrl: './register.component.html',
+  styleUrls: ['./register.component.css']
+})
+export class RegisterComponent {
+  username: string = '';
+  password: string = '';
+  role: string = 'user';
+
+  constructor(private authService: AuthService, private router: Router) { }
+
+  onSubmit(form: NgForm): void {
+    if (form.valid) {
+      const user = { username: this.username, password: this.password, role: this.role };
+      if (this.role === 'admin') {
+        this.authService.registerAdmin(user).subscribe(response => {
+          this.router.navigate(['/login']);
+        });
+      } else {
+        this.authService.registerUser(user).subscribe(response => {
+          this.router.navigate(['/login']);
+        });
+      }
+    }
+  }
+}
+```
+
+### Updated RegisterComponent HTML
+
+Add a dropdown for role selection in the `register.component.html`:
+
+```html
+<div class="container text-center vh-100 d-flex flex-column justify-content-center align-items-center">
+  <h1 class="mb-4 text-center">Register</h1>
+  <div class="container mt-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h2 class="card-title text-center mb-4">Register</h2>
+            <form (ngSubmit)="onSubmit(registerForm)" #registerForm="ngForm">
+              <div class="mb-3">
+                <label for="username" class="visually-hidden">Username:</label>
+                <input type="text" id="username" class="form-control mb-2" [(ngModel)]="username" name="username" placeholder="Username" required>
+              </div>
+              <div class="mb-3">
+                <label for="password" class="visually-hidden">Password:</label>
+                <input type="password" id="password" class="form-control mb-2" [(ngModel)]="password" name="password" placeholder="Password" required>
+              </div>
+              <div class="mb-3">
+                <label for="role" class="visually-hidden">Role:</label>
+                <select id="role" class="form-control mb-2" [(ngModel)]="role" name="role" required>
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary mb-3">Register</button>
+            </form>
+            <p class="text-center">Already have an account? <a routerLink="/login">Login here</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+### Summary
+
+1. **AuthService**: Added separate methods for registering users and admins.
+2. **RegisterComponent**: Calls the appropriate service method based on the selected role and then navigates to the login page.
+3. **RegisterComponent HTML**: Includes a dropdown for role selection.
+
+With these changes, the registration form will correctly handle user and admin registrations and navigate to the login page upon successful registration.
