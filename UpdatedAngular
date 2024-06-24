@@ -1,0 +1,305 @@
+---theaterServices---
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from 'src/environments/environment';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class TheatreService {
+  apiUrl = `${environment.apiUrl}/theatre`; // Make sure the environment variable is set correctly
+
+  constructor(private http: HttpClient) { }
+
+  getTheatres(): Observable<any[]> {
+    return this.http.get<any[]>(this.apiUrl);
+  }
+
+  getTheatre(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/id/${id}`);
+  }
+
+  getTheatresByCity(city: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/city/${city}`);
+  }
+
+  addTheatre(theatre: any): Observable<any> {
+    return this.http.post<any>(this.apiUrl, theatre);
+  }
+
+  
+
+  deleteTheatre(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}/id/${id}`);
+  }
+}
+
+---TheaterComponent---
+import { Component, OnInit } from '@angular/core';
+import { NgForm } from '@angular/forms';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { TheatreService } from '../../services/theatre.service';
+
+@Component({
+  selector: 'app-theatres-management',
+  templateUrl: './theatres-management.component.html',
+  styleUrls: ['./theatres-management.component.css']
+})
+export class TheatresManagementComponent implements OnInit {
+  theatres: any[] = [];
+  selectedTheatre: any = {};
+  isEdit = false;
+
+  constructor(
+    private modalService: NgbModal,
+    private theatreService: TheatreService
+  ) {}
+
+  ngOnInit(): void {
+    this.loadTheatres();
+  }
+
+  loadTheatres(): void {
+    this.theatreService.getTheatres().subscribe(theatres => {
+      this.theatres = theatres;
+    });
+  }
+
+  openModal(content: any, theatre?: any): void {
+    if (theatre) {
+      this.isEdit = true;
+      this.selectedTheatre = { ...theatre };
+    } else {
+      this.isEdit = false;
+      this.selectedTheatre = {};
+    }
+    this.modalService.open(content, { ariaLabelledBy: 'modal-basic-title' });
+  }
+
+  onSubmit(form: NgForm): void {
+    if (form.valid) {
+        this.theatreService.addTheatre(this.selectedTheatre).subscribe(() => {
+          this.loadTheatres();
+          this.modalService.dismissAll();
+        });
+   
+    }
+  }
+
+  
+  deleteTheatre(theatre: any): void {
+    if (confirm('Are you sure you want to delete this theatre?')) {
+      this.theatreService.deleteTheatre(theatre.id).subscribe(() => {
+        this.loadTheatres();
+      });
+    }
+  }
+}
+
+---TheatreComponentHTML---
+<div class="container">
+    <h2>Theatres Management</h2>
+    <button class="btn btn-primary mb-3" (click)="openModal(theatreModal)">Add Theatre</button>
+    <table class="table table-bordered table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>City</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let theatre of theatres">
+          <td>{{ theatre.id }}</td>
+          <td>{{ theatre.name }}</td>
+          <td>{{ theatre.city }}</td>
+          <td>
+            <button class="btn btn-danger" (click)="deleteTheatre(theatre)">Delete</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  
+    <ng-template #theatreModal let-modal>
+      <div class="modal-header">
+        <h4 class="modal-title">{{ isEdit ? 'Edit Theatre' : 'Add Theatre' }}</h4>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form #theatreForm="ngForm" (ngSubmit)="onSubmit(theatreForm)">
+          <div class="form-group">
+            <label for="name">Name</label>
+            <input
+              type="text"
+              class="form-control"
+              id="name"
+              name="name"
+              [(ngModel)]="selectedTheatre.name"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="city">City</label>
+            <input
+              type="text"
+              class="form-control"
+              id="city"
+              name="city"
+              [(ngModel)]="selectedTheatre.city"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-primary">{{ isEdit ? 'Update' : 'Add' }}</button>
+          <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Cancel click')">Cancel</button>
+        </form>
+      </div>
+    </ng-template>
+  </div>
+
+---TheatreEntiti---
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Book_My_Show_Entities
+{
+    public class Theatre
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required(ErrorMessage = "Name is mandatory")]
+        public string Name { get; set; }
+
+        [EnumDataType(typeof(City))]
+        public string City { get; set; }
+
+    }
+}
+
+---Theater WEB API Controller---
+
+using Book_My_Show_BL.Interfaces;
+using Book_My_Show_Entities;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Book_My_Show.Controllers
+{
+
+    [Route("api/[controller]")]
+    [ApiController]
+    
+    public class TheatreController : ControllerBase
+    {
+    
+        private ITheatreServiceBL _theatreServices;
+
+        public TheatreController(ITheatreServiceBL theatreServices)
+        {
+            _theatreServices = theatreServices;
+        }
+
+        [HttpPost]
+        public JsonResult Post(Theatre theatre)
+        {
+            _theatreServices.Add(theatre);
+            return new JsonResult("Added Successfully");
+        }
+
+        [HttpGet("id/{id}")]
+        public JsonResult Get(int id)
+        {
+            var movie = _theatreServices.GetById(id);
+            return new JsonResult(movie);
+        }
+
+        [HttpGet("city/{city}")]
+        public JsonResult Get(string city)
+        {
+            var movie = _theatreServices.GetByCity(city);
+            return new JsonResult(movie);
+        }
+
+        [HttpGet]
+        public JsonResult Get()
+        {
+            var moviesList = _theatreServices.GetAll();
+            return new JsonResult(moviesList);
+        }
+
+        [HttpDelete("{id}")]
+        public JsonResult Delete(int id)
+        {
+            _theatreServices.Delete(id);
+            return new JsonResult("Deleted Successfully");
+        }
+    }
+}
+
+DAL
+
+using Book_My_Show_DAL.Interfaces;
+using Book_My_Show_Entities;
+using Dapper;
+using Microsoft.Extensions.Configuration;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Book_My_Show_DAL.Implementations
+{
+    public class TheatreServices : ITheatreServices
+    {
+        private IDbConnection _db;
+
+        public TheatreServices(IConfiguration configuration)
+        {
+            _db = new SqlConnection(configuration.GetConnectionString("DefaultConnection"));
+        }
+
+        public void Add(Theatre theatre)
+        {
+            var sqlQuery = "INSERT INTO Theatre (Name,City) VALUES (@Name,@City)";
+            _db.Execute(sqlQuery, theatre);
+        }
+
+        public void Delete(int Id)
+        {
+            var sqlQuery = "DELETE FROM Theatre where Id = @Id";
+            _db.Execute(sqlQuery, new { Id });
+        }
+
+        public List<Theatre> GetAll()
+        {
+            var sqlQuery = "SELECT * FROM Theatre";
+            return _db.Query<Theatre>(sqlQuery).ToList();
+        }
+
+        public List<Theatre> GetByCity(string City)
+        {
+            var sqlQuery = "SELECT * FROM Theatre where City = @City";
+            return _db.Query<Theatre>(sqlQuery, new { @City = City }).ToList();
+        }
+
+        public Theatre GetById(int Id)
+        {
+            var sqlQuery = "SELECT * FROM Theatre where Id = @Id";
+            return _db.Query<Theatre>(sqlQuery, new { @Id = Id }).SingleOrDefault();
+        }
+    }
+}
+
