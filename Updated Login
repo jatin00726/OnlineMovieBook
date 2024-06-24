@@ -1,0 +1,174 @@
+To update the login HTML in Angular to include a dropdown list with "Admin" and "User" options and handle redirection based on the selected role, you can follow these steps:
+
+1. **Add the dropdown in the HTML form**.
+2. **Modify the `LoginComponent` to handle the dropdown selection**.
+3. **Ensure the service and component handle the response correctly and navigate to the appropriate page**.
+
+### Updated `login.component.html`
+
+Add a dropdown for selecting the role:
+
+```html
+<div class="container text-center vh-100 d-flex flex-column justify-content-center align-items-center">
+  <h1 class="mb-4 text-center">Welcome to BookMyShow</h1>
+  <div class="container mt-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h2 class="card-title text-center mb-4">Login</h2>
+            <form (ngSubmit)="onSubmit(loginForm)" #loginForm="ngForm">
+              <div class="mb-3">
+                <label for="username" class="visually-hidden">Username:</label>
+                <input type="text" id="username" class="form-control mb-2" [(ngModel)]="username" name="username" placeholder="Username" required>
+              </div>
+              <div class="mb-3">
+                <label for="password" class="visually-hidden">Password:</label>
+                <input type="password" id="password" class="form-control mb-2" [(ngModel)]="password" name="password" placeholder="Password" required>
+              </div>
+              <div class="mb-3">
+                <label for="role" class="visually-hidden">Role:</label>
+                <select id="role" class="form-control mb-2" [(ngModel)]="role" name="role" required>
+                  <option value="admin">Admin</option>
+                  <option value="user">User</option>
+                </select>
+              </div>
+              <button type="submit" class="btn btn-primary mb-3">Login</button>
+            </form>
+            <p class="text-center">Don't have an account? <a routerLink="/register">Register here</a></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+### Updated `LoginComponent`
+
+Modify the `LoginComponent` to include the role selection and handle redirection based on the selected role:
+
+```typescript
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+import { NgForm } from '@angular/forms';
+
+@Component({
+  selector: 'app-login',
+  templateUrl: './login.component.html',
+  styleUrls: ['./login.component.css']
+})
+export class LoginComponent {
+  username: string = '';
+  password: string = '';
+  role: string = 'user'; // Default role
+
+  constructor(private authService: AuthService, private router: Router) { }
+
+  onSubmit(form: NgForm): void {
+    if (form.valid) {
+      this.authService.login({ username: this.username, password: this.password, role: this.role }).subscribe(response => {
+        if (response.token) {
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('role', response.role);
+          if (response.role === 'admin') {
+            this.router.navigate(['/admin']);
+          } else {
+            this.router.navigate(['/user']);
+          }
+        }
+      });
+    }
+  }
+}
+```
+
+### Backend Adjustments
+
+Ensure your backend API correctly handles the role parameter. Here’s a quick example of how you might adjust the `AccountController` to include the role:
+
+```csharp
+using Book_My_Show_DAL.Context;
+using Book_My_Show_Entities;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Book_My_Show.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class AccountController : ControllerBase
+    {
+        private AccountContext db = new AccountContext();
+
+        [HttpPost("Login")]
+        public async Task<ActionResult> Login(UserModel user)
+        {
+            var result = GetUserbyNameandPassword(user);
+            if (result != null)
+            {
+                return Ok(new { UserId = result.UserId, Message = result, Role = result.Role });
+            }
+            return Unauthorized(new { Message = "Invalid credentials" });
+        }
+
+        [HttpPost("CreateUser")]
+        public async Task<ActionResult> CreateUser(UserModel user)
+        {
+            var result = AddUser(user);
+            return Ok(new { UserId = result.UserId, Message = result });
+        }
+
+        [HttpPost("CreateAdmin")]
+        public async Task<ActionResult> CreateAdmin(UserModel user)
+        {
+            var result = AddAdmin(user);
+            return Ok(new { UserId = result.UserId, Message = result });
+        }
+
+        [HttpGet("CreateUser")]
+        public UserModel GetUserbyNameandPassword(UserModel user)
+        {
+            return db.Users.FirstOrDefault(u => u.Username == user.Username && u.Password == user.Password);
+        }
+
+        [HttpGet("Adduser")]
+        public UserModel AddUser(UserModel objUser)
+        {
+            objUser.Role = "User";
+            db.Users.Add(objUser);
+            db.SaveChanges();
+            return objUser;
+        }
+
+        [HttpGet("Addadmin")]
+        public UserModel AddAdmin(UserModel objUser)
+        {
+            objUser.Role = "Admin";
+            db.Users.Add(objUser);
+            db.SaveChanges();
+            return objUser;
+        }
+
+        [HttpGet("Logout")]
+        public async Task<IActionResult> LogOut()
+        {
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            return LocalRedirect("/");
+        }
+    }
+}
+```
+
+### Summary
+
+1. **Updated the HTML** to include a dropdown for selecting the role (Admin/User).
+2. **Modified the `LoginComponent`** to handle role selection and redirect the user based on the selected role.
+3. **Ensured the backend API** correctly processes the role parameter and returns the appropriate response.
+
+With these updates, users can now log in and be redirected to different pages based on their selected role.
