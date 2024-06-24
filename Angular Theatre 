@@ -106,3 +106,67 @@ export class TheatresManagementComponent implements OnInit {
     }
   }
 }
+
+
+<div class="container">
+  <h2>Theatres Management</h2>
+  <button class="btn btn-primary mb-3" (click)="openModal(theatreModal)">Add Theatre</button>
+  <table class="table table-bordered table-striped">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>City</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let theatre of theatres">
+        <td>{{ theatre.id }}</td>
+        <td>{{ theatre.name }}</td>
+        <td>{{ theatre.city }}</td>
+        <td>
+          <button class="btn btn-warning mr-2" (click)="editTheatre(theatreModal, theatre)">Edit</button>
+          <button class="btn btn-danger" (click)="deleteTheatre(theatre)">Delete</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  <ng-template #theatreModal let-modal>
+    <div class="modal-header">
+      <h4 class="modal-title">{{ isEdit ? 'Edit Theatre' : 'Add Theatre' }}</h4>
+      <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+        <span aria-hidden="true">&times;</span>
+      </button>
+    </div>
+    <div class="modal-body">
+      <form #theatreForm="ngForm" (ngSubmit)="onSubmit(theatreForm)">
+        <div class="form-group">
+          <label for="name">Name</label>
+          <input
+            type="text"
+            class="form-control"
+            id="name"
+            name="name"
+            [(ngModel)]="selectedTheatre.name"
+            required
+          />
+        </div>
+        <div class="form-group">
+          <label for="city">City</label>
+          <input
+            type="text"
+            class="form-control"
+            id="city"
+            name="city"
+            [(ngModel)]="selectedTheatre.city"
+            required
+          />
+        </div>
+        <button type="submit" class="btn btn-primary">{{ isEdit ? 'Update' : 'Add' }}</button>
+        <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Cancel click')">Cancel</button>
+      </form>
+    </div>
+  </ng-template>
+</div>
