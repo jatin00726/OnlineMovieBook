@@ -172,3 +172,27 @@ namespace Book_My_Show.Controllers
 3. **Ensured the backend API** correctly processes the role parameter and returns the appropriate response.
 
 With these updates, users can now log in and be redirected to different pages based on their selected role.
+
+public async Task<ActionResult> Login(UserModel user)
+{
+
+    var result = GetUserbyNameandPassword(user);
+   
+    return Ok(new {Role = result.Role });
+}
+onSubmit(form: NgForm): void {
+    if (form.valid) {
+      this.authService.login({ username: this.username, password: this.password,  role: this.role }).subscribe(response => {
+        if (response.token) {
+          console.log(response.role);
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('role', response.role);
+          if (response.role === 'Admin') {
+            this.router.navigate(['/admin']);
+          } else {
+            this.router.navigate(['/user']);
+          }
+        }
+      });
+    }
+  }
