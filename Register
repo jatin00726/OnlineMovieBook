@@ -1,0 +1,169 @@
+-----AccountController--------
+using Book_My_Show_DAL.Context;
+using Book_My_Show_Entities;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Web.Providers.Entities;
+
+namespace Book_My_Show.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class AccountController : ControllerBase
+    {
+        private AccountContext db = new AccountContext();
+        [HttpPost("Login")]
+        public async Task<ActionResult> Login(UserModel user)
+        {
+
+            var result = GetUserbyNameandPassword(user);
+            //if (result.)
+            //{
+            //    return Ok(new { Message = result });
+            //}
+            return Ok(new {Role = result.Role });
+        }
+        [HttpPost("CreateUser")]
+
+        public async Task<ActionResult> CreateUser(UserModel user)
+        {
+
+            var result = AddUser(user);
+            //if (!result.Success)
+            //{
+            //    return BadRequest(result.Message);
+            //}
+            return Ok(new { UserId = result.UserId, Message = result });
+        }
+
+        [HttpPost("CreateAdmin")]
+
+        public async Task<ActionResult> CreateAdmin(UserModel user)
+        {
+
+            var result = AddAdmin(user);
+            //if (!result.Success)
+            //{
+            //    return BadRequest(result.Message);
+            //}
+            return Ok(new { UserId = result.UserId, Message = result });
+        }
+
+        [HttpGet("CreateUser")]
+        public UserModel GetUserbyNameandPassword(UserModel user)
+        {
+            return db.Users.FirstOrDefault(u => u.Username == user.Username && u.Password == user.Password);
+        }
+
+        [HttpGet("Adduser")]
+        public UserModel AddUser(UserModel objUser)
+        {
+            objUser.Role = "User";
+            db.Users.Add(objUser);
+            db.SaveChanges();
+            return objUser;
+        }
+
+        [HttpGet("Addadmin")]
+        public UserModel AddAdmin(UserModel objUser)
+        {
+            objUser.Role = "Admin";
+            db.Users.Add(objUser);
+            db.SaveChanges();
+            return objUser;
+        }
+
+        [HttpGet("Logout")]
+        public async Task<IActionResult> LogOut()
+        {
+            //SignOutAsync is Extension method for SignOut    
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            //Redirect to home page    
+            return LocalRedirect("/");
+        }
+
+    }
+}
+
+
+-----RegisterComponent--------
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
+import { NgForm } from '@angular/forms';
+
+@Component({
+  selector: 'app-register',
+  templateUrl: './register.component.html',
+  styleUrls: ['./register.component.css']
+})
+export class RegisterComponent {
+  username: string = '';
+  password: string = '';
+  role: string = 'user';
+
+  constructor(private authService: AuthService, private router: Router) { }
+
+  onSubmit(form: NgForm): void {
+    if(form.valid){
+      this.authService.register({ username: this.username, password: this.password, role: this.role }).subscribe(response => {
+        if (response.role === 'Admin') {
+          this.router.navigate(['/admin']);
+        } else {
+          this.router.navigate(['/user']);
+        }
+      });  
+    }
+  }
+}
+
+-------AuthService-------
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private authUrl = 'https://localhost:44353/api/Account/';
+
+  constructor(private http: HttpClient) { }
+
+  login(credentials: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}` +"Login", credentials).pipe(
+      tap(response => {
+        if (response.role) {
+          //localStorage.setItem('token', response.token);
+          localStorage.setItem('role', response.role);
+        }
+      })
+    );
+  }
+
+  register(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}/register`, user);
+  }
+
+  logout(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+  }
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('token');
+  }
+
+  getUserRole(): string | null {
+    return localStorage.getItem('role');
+  }
+}
+
+
+above are the  AuthService, AccountController, RegisterComponent, update the RegisterComponent and AuthService as when the role is admin it should be redireted to  public async Task<ActionResult> CreateAdmin(UserModel user), and if it is user it should be redirected to
+public async Task<ActionResult> CreateUser(UserModel user) in the AccountController. when the user is registered as user and admin it should redirect to login page 
