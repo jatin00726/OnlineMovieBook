@@ -173,3 +173,17 @@ export class AuthService {
 
 
 after clicking on the logout button it is not redirecting to the login page. Also update the Logout in AccountCOntroller to return the appropriate link
+
+@if (User.Identity.IsAuthenticated)
+{
+ 
+    using (Html.BeginForm("LogOut", "Account", FormMethod.Post, new { id = "logoutForm", @class = "navbar-right" }))
+    {
+        @Html.AntiForgeryToken()
+ 
+        <ul class="navbar-nav navbar-right">
+<li>
+                @Html.ActionLink("Hello " + User.Identity.Name + "!", "Index", "Manage", routeValues: null, htmlAttributes: new { title = "Manage", @class = "nav-link" })
+</li>
+<li><a class="nav-link" href="javascript:document.getElementById('logoutForm').submit()">Log off</a></li>
+</ul>
