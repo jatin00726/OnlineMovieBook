@@ -98,6 +98,13 @@ Sure! Here's an updated version of the collapsible sidebar and logout functional
   font-size: 1.5rem;
   cursor: pointer;
 }
+
+/* Whitish translucent background */
+.tran {
+  background: rgba(255, 255, 255, 0.8); /* White color with 80% opacity */
+  padding: 20px;
+  border-radius: 10px;
+}
 ```
 
 ### 2. Update the HTML
