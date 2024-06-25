@@ -1,0 +1,108 @@
+<div class="container-fluid">
+    <div class="row">
+      <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+        <div class="position-sticky">
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link active" aria-current="page" routerLink="/admin">
+                Dashboard
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/movies">
+                Manage Movies
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/theatres">
+                Manage Theatres
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/shows">
+                Manage Shows
+              </a>
+            </li>
+          </ul>
+        </div>
+      </nav>
+  
+      <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h1 class="h2">Admin Dashboard</h1>
+        </div>
+        <router-outlet></router-outlet>
+      </main>
+    </div>
+  </div>
+
+update the above HTML to Include A side collapseable side nav bar. Aslo include a logout Button in the top left corner of the page. When the user clicks the Logout Button It should call the below 
+ActionResult [HttpGet("Logout")]
+public async Task<IActionResult> LogOut()
+{
+    //SignOutAsync is Extension method for SignOut    
+    await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    //Redirect to home page    
+    return LocalRedirect("/");
+}
+
+the above action result is in the AccountController. 
+Below Is the AuthService code which has the Logout service:
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private authUrl = 'https://localhost:44353/api/Account/';
+
+  constructor(private http: HttpClient) { }
+
+  login(credentials: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}` +"Login", credentials).pipe(
+      tap(response => {
+        if (response.role) {
+          //localStorage.setItem('token', response.token);
+          localStorage.setItem('role', response.role);
+        }
+      })
+    );
+  }
+
+  registerUser(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}CreateUser`, user);
+  }
+
+  registerAdmin(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}CreateAdmin`, user);
+  }
+
+  logout(): void {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+  }
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('token');
+  }
+
+  getUserRole(): string | null {
+    return localStorage.getItem('role');
+  }
+}
+
+Below is the admim Component. Update it Accordingly. It should redirect to the Login Page
+import { Component } from '@angular/core';
+
+@Component({
+  selector: 'app-admin-dashboard',
+  templateUrl: './admin-dashboard.component.html',
+  styleUrl: './admin-dashboard.component.css'
+})
+export class AdminDashboardComponent {
+
+}
+
