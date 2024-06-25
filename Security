@@ -326,3 +326,53 @@ By setting up cookie-based authentication in your ASP.NET Core backend and updat
     </main>
   </div>
 </div>
+
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <nav id="sidebarMenu" class="sidebar">
+      <div class="position-sticky">
+        <ul class="nav flex-column">
+          <li class="nav-item" *ngif="isAuthenticated()">
+            <a class="nav-link active" aria-current="page" routerLink="/admin" >
+              Dashboard
+            </a>
+          </li>
+          <li class="nav-item" *ngif="isAuthenticated()">
+            <a class="nav-link" routerLink="/admin/movies" >
+              Manage Movies
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/theatres" >
+              Manage Theatres
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/shows">
+              Manage Shows
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <main id="mainContent" class="main-content">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom tran">
+        <button class="toggle-button" (click)="toggleSidebar()">☰</button>
+        <h1 class="h2">Admin Dashboard</h1>
+        <!-- <button class="btn btn-danger" (click)="logout()">Logout</button> -->
+        <ul class="navbar-nav navbar-right">
+          <li *ngIf="isAuthenticated()">
+            <button class="btn btn-danger" (click)="logout()">Log off</button>
+          </li>
+        </ul>
+      </div>
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
+core.mjs:10086  NG0303: Can't bind to 'ngif' since it isn't a known property of 'li' (used in the '_AdminDashboardComponent' component template).
+1. If 'li' is an Angular component and it has the 'ngif' input, then verify that it is a part of an @NgModule where this component is declared.
+2. To allow any property add 'NO_ERRORS_SCHEMA' to the '@NgModule.schemas' of this component.
