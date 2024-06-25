@@ -1,0 +1,370 @@
+--TheaterHtml----
+<div class="container card">
+  <div class="col-md-20">
+    <h2>Theatres Management</h2>
+    <div class="form-group">
+        <label for="citySelect">Select City</label>
+        <select
+          id="citySelect"
+          class="form-control"
+          [(ngModel)]="selectedCity"
+          (ngModelChange)="onCityChange($event)"
+        >
+          <option value="">All Cities</option>
+          <option *ngFor="let city of cities" [value]="city">{{ city }}</option>
+        </select>
+      
+      </div>
+    <button class="btn btn-primary mb-3" (click)="openModal(theatreModal)">Add Theatre</button>
+    <table class="table table-bordered table-striped">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>City</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let theatre of theatres">
+          <td>{{ theatre.id }}</td>
+          <td>{{ theatre.name }}</td>
+          <td>{{ theatre.city }}</td>
+          <td>
+            <button class="btn btn-warning mr-2" (click)="editTheatre(theatreModal, theatre)">Edit</button>
+            <button class="btn btn-danger ml-2" (click)="deleteTheatre(theatre)">Delete</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  
+    <ng-template #theatreModal let-modal>
+      <div class="modal-header">
+        <h4 class="modal-title">{{ isEdit ? 'Edit Theatre' : 'Add Theatre' }}</h4>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form #theatreForm="ngForm" (ngSubmit)="onSubmit(theatreForm)">
+          <div class="form-group">
+            <label for="name">Name</label>
+            <input
+              type="text"
+              class="form-control"
+              id="name"
+              name="name"
+              [(ngModel)]="selectedTheatre.name"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="city">City</label>
+            <input
+              type="text"
+              class="form-control"
+              id="city"
+              name="city"
+              [(ngModel)]="selectedTheatre.city"
+              required
+            />
+          </div>
+          <button type="submit" class="btn btn-primary">{{ isEdit ? 'Update' : 'Add' }}</button>
+          <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Cancel click')">Cancel</button>
+        </form>
+      </div>
+    </ng-template>
+  </div>
+</div>
+
+
+---AdminComponent.ts------
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service'; // Adjust the path as necessary
+
+@Component({
+  selector: 'app-admin-dashboard',
+  templateUrl: './admin-dashboard.component.html',
+  styleUrl: './admin-dashboard.component.css'
+})
+export class AdminDashboardComponent {
+  constructor(private authService: AuthService, private router: Router) {}
+
+  logout(): void {
+    this.authService.logout().subscribe(() => {
+      this.router.navigate(['/login']);
+      
+    });
+  }
+  toggleSidebar() {
+    const sidebar = document.getElementById('sidebarMenu');
+    const mainContent = document.getElementById('mainContent');
+    if (sidebar && mainContent) {
+      sidebar.classList.toggle('collapsed');
+      mainContent.classList.toggle('collapsed');
+    }
+  }
+  isAuthenticated(): boolean {
+    return this.authService.isAuthenticated() && this.authService.isAdmin();
+  }
+  getUserRole(): string | null {
+    return this.authService.getUserRole();
+  }
+
+  // isAdmin(): boolean{
+  //   const userRole = this.authService.getUserRole();
+  //   return userRole === 'Admin';
+  // }
+  
+}
+-----Auth guard------
+import { Component } from '@angular/core';
+import { Injectable } from '@angular/core';
+import { CanActivate, Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+@Component({
+  selector: 'app-auth-guard',
+  templateUrl: './auth-guard.component.html',
+  styleUrl: './auth-guard.component.css'
+})
+export class AuthGuardComponent {
+  constructor(private authService: AuthService, private router: Router) {}
+
+  canActivate(): boolean {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return false;
+    }
+    return true;
+  }
+}
+
+----Auth Service-----
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private authUrl = 'https://localhost:44353/api/Account/';
+
+  constructor(private http: HttpClient) { }
+
+  login(credentials: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}` +"Login", credentials).pipe(
+      tap(response => {
+        if (response.role) {
+          //localStorage.setItem('token', response.token);
+          localStorage.setItem('role', response.role);
+        }
+      })
+    );
+  }
+
+  registerUser(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}CreateUser`, user);
+  }
+
+  registerAdmin(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}CreateAdmin`, user);
+  }
+
+  logout(): Observable<any> {
+    return this.http.get(`${this.authUrl}Logout`).pipe(
+      tap(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        this.clearCache();
+      })
+    );
+  }
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('role');
+  }
+
+  getUserRole(): string | null {
+    return localStorage.getItem('role');
+  }
+  private clearCache(): void {
+    if (caches) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      });
+    }
+  }
+  isAdmin(): boolean{
+    const rol = localStorage.getItem('role');
+    console.log(rol);
+    return rol === 'Admin';
+  }
+}
+
+
+---Account Controller----
+using Book_My_Show_DAL.Context;
+using Book_My_Show_Entities;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Web.Providers.Entities;
+using System.Collections.Generic;
+using System.Security.Claims;
+using System;
+
+namespace Book_My_Show.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class AccountController : ControllerBase
+    {
+        private AccountContext db = new AccountContext();
+        [HttpPost("Login")]
+        public async Task<ActionResult> Login(UserModel user)
+        {
+
+            var result = GetUserbyNameandPassword(user);
+            if (result == null)
+            {
+                return Unauthorized("Invalid Credentials");
+            }
+            //if (result.)
+            //{
+            //    return Ok(new { Message = result });
+            //}
+            var claims = new List<Claim> {
+                new Claim(ClaimTypes.NameIdentifier, Convert.ToString(result.UserId)),
+                new Claim(ClaimTypes.Name, result.Username),
+                new Claim(ClaimTypes.Role, result.Role)
+            };
+            //Initialize a new instance of the ClaimsIdentity with the claims and authentication scheme    
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            //Initialize a new instance of the ClaimsPrincipal with ClaimsIdentity    
+            var principal = new ClaimsPrincipal(identity);
+
+            //SignInAsync is a Extension method for Sign in a principal for the specified scheme.    
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties());
+            return Ok(new { Role = result.Role });
+        }
+        [HttpPost("CreateUser")]
+
+        public async Task<ActionResult> CreateUser(UserModel user)
+        {
+
+            var result = AddUser(user);
+            //if (!result.Success)
+            //{
+            //    return BadRequest(result.Message);
+            //}            
+            return Ok(new { UserId = result.UserId, Message = result });
+        }
+
+        [HttpPost("CreateAdmin")]
+
+        public async Task<ActionResult> CreateAdmin(UserModel user)
+        {
+
+            var result = AddAdmin(user);
+            //if (!result.Success)
+            //{
+            //    return BadRequest(result.Message);
+            //}
+            return Ok(new { UserId = result.UserId, Message = result });
+        }
+
+        [HttpGet("CreateUser")]
+        public UserModel GetUserbyNameandPassword(UserModel user)
+        {
+            return db.Users.FirstOrDefault(u => u.Username == user.Username && u.Password == user.Password);
+        }
+
+        [HttpGet("Adduser")]
+        public UserModel AddUser(UserModel objUser)
+        {
+            objUser.Role = "User";
+            db.Users.Add(objUser);
+            db.SaveChanges();
+            return objUser;
+        }
+
+        [HttpGet("Addadmin")]
+        public UserModel AddAdmin(UserModel objUser)
+        {
+            objUser.Role = "Admin";
+            db.Users.Add(objUser);
+            db.SaveChanges();
+            return objUser;
+        }
+
+        [HttpGet("Logout")]
+        public async Task<IActionResult> LogOut()
+        {
+            //SignOutAsync is Extension method for SignOut    
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            //Redirect to home page    
+            return Ok(new { message = "User LOgged Out" });
+        }
+
+    }
+}
+---Admin Html----
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <nav id="sidebarMenu" class="sidebar">
+      <div class="position-sticky">
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" routerLink="/admin" *ngIf="isAuthenticated()">
+              Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/movies" *ngIf="isAuthenticated()">
+              Manage Movies
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/theatres" *ngIf="isAuthenticated()">
+              Manage Theatres
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/shows" *ngIf="isAuthenticated()">
+              Manage Shows
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <main id="mainContent" class="main-content">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom tran">
+        <button class="toggle-button" (click)="toggleSidebar()">☰</button>
+        <h1 class="h2">Admin Dashboard</h1>
+        <!-- <button class="btn btn-danger" (click)="logout()">Logout</button> -->
+        <ul class="navbar-nav navbar-right">
+          <li *ngIf="isAuthenticated()">
+            <button class="btn btn-danger" (click)="logout()">Log off</button>
+          </li>
+        </ul>
+      </div>
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
+
+----Auth Service-----
+I have provided the above codes of TheaterHtml,AdminHTML, AdminComponent.ts(Logout is defined here) , Auth guard, Auth Service, AccountCOntroller. When the User Logs in all the actionlink in the Admin Nav Should be shown ANd when the user Log offs the respective components should be not accessable. Modify the above code accordingly. 
