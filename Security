@@ -279,3 +279,50 @@ export class NavbarComponent {
 ### Conclusion
 
 By setting up cookie-based authentication in your ASP.NET Core backend and updating your Angular frontend to handle login, logout, and authentication checks, you can create a secure authentication flow. Ensure to protect all necessary routes and clear caches as needed to prevent unauthorized access after logout.
+
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <nav id="sidebarMenu" class="sidebar">
+      <div class="position-sticky">
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" routerLink="/admin">
+              Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/movies">
+              Manage Movies
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/theatres">
+              Manage Theatres
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/shows">
+              Manage Shows
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <main id="mainContent" class="main-content">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom tran">
+        <button class="toggle-button" (click)="toggleSidebar()">☰</button>
+        <h1 class="h2">Admin Dashboard</h1>
+        <!-- <button class="btn btn-danger" (click)="logout()">Logout</button> -->
+        <ul class="navbar-nav navbar-right">
+          <li *ngIf="isAuthenticated()">
+            <a class="nav-link" (click)="logout()">Log off</a>
+          </li>
+        </ul>
+      </div>
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
