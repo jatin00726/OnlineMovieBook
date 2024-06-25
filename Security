@@ -1,0 +1,306 @@
+To implement cookie-based authentication with ASP.NET Core and integrate it with your Angular frontend, we need to set up the backend to handle login, logout, and user management using cookies. Additionally, we will update the Angular service to use these endpoints.
+
+Here's how to update your backend and Angular service:
+
+### Backend (ASP.NET Core)
+
+1. **Startup Configuration**: Ensure your application is configured to use cookie authentication.
+
+2. **Controllers**: Implement login, logout, and user creation logic.
+
+#### 1. Update `Startup.cs` for Cookie Authentication
+
+```csharp
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+
+    services.AddControllersWithViews();
+
+    services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+        .AddCookie(options =>
+        {
+            options.LoginPath = "/api/Account/Login";
+            options.LogoutPath = "/api/Account/Logout";
+        });
+}
+
+public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+{
+    if (env.IsDevelopment())
+    {
+        app.UseDeveloperExceptionPage();
+    }
+    else
+    {
+        app.UseExceptionHandler("/Home/Error");
+        app.UseHsts();
+    }
+
+    app.UseHttpsRedirection();
+    app.UseStaticFiles();
+
+    app.UseRouting();
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
+    app.UseEndpoints(endpoints =>
+    {
+        endpoints.MapControllerRoute(
+            name: "default",
+            pattern: "{controller=Home}/{action=Index}/{id?}");
+    });
+}
+```
+
+#### 2. Update `AccountController.cs`
+
+```csharp
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Mvc;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
+using System.Threading.Tasks;
+
+[Route("api/[controller]")]
+[ApiController]
+public class AccountController : ControllerBase
+{
+    private readonly ApplicationDbContext db;
+
+    public AccountController(ApplicationDbContext context)
+    {
+        db = context;
+    }
+
+    [HttpPost("Login")]
+    public async Task<ActionResult> Login(UserModel user)
+    {
+        var result = GetUserbyNameandPassword(user);
+        if (result == null)
+        {
+            return Unauthorized("Invalid credentials");
+        }
+
+        var claims = new List<Claim> {
+            new Claim(ClaimTypes.NameIdentifier, Convert.ToString(result.UserId)),
+            new Claim(ClaimTypes.Name, result.Username),
+            new Claim(ClaimTypes.Role, result.Role)
+        };
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+
+        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties());
+
+        return Ok(new { Role = result.Role });
+    }
+
+    [HttpPost("CreateUser")]
+    public async Task<ActionResult> CreateUser(UserModel user)
+    {
+        var result = AddUser(user);
+        return Ok(new { UserId = result.UserId, Message = "User created successfully" });
+    }
+
+    [HttpPost("CreateAdmin")]
+    public async Task<ActionResult> CreateAdmin(UserModel user)
+    {
+        var result = AddAdmin(user);
+        return Ok(new { UserId = result.UserId, Message = "Admin created successfully" });
+    }
+
+    [HttpGet("GetUserbyNameandPassword")]
+    public UserModel GetUserbyNameandPassword(UserModel user)
+    {
+        return db.Users.FirstOrDefault(u => u.Username == user.Username && u.Password == user.Password);
+    }
+
+    [HttpPost("AddUser")]
+    public UserModel AddUser(UserModel objUser)
+    {
+        objUser.Role = "User";
+        db.Users.Add(objUser);
+        db.SaveChanges();
+        return objUser;
+    }
+
+    [HttpPost("AddAdmin")]
+    public UserModel AddAdmin(UserModel objUser)
+    {
+        objUser.Role = "Admin";
+        db.Users.Add(objUser);
+        db.SaveChanges();
+        return objUser;
+    }
+
+    [HttpPost("Logout")]
+    public async Task<IActionResult> LogOut()
+    {
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return Ok(new { message = "User logged out" });
+    }
+}
+```
+
+### Angular Frontend
+
+Update the Angular service to handle cookie-based authentication.
+
+#### 1. AuthService
+
+```typescript
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private authUrl = 'https://localhost:44353/api/Account/';
+
+  constructor(private http: HttpClient) { }
+
+  login(credentials: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}Login`, credentials).pipe(
+      tap(response => {
+        if (response.role) {
+          localStorage.setItem('role', response.role);
+        }
+      })
+    );
+  }
+
+  registerUser(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}CreateUser`, user);
+  }
+
+  registerAdmin(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}CreateAdmin`, user);
+  }
+
+  logout(): Observable<any> {
+    return this.http.post(`${this.authUrl}Logout`, {}).pipe(
+      tap(() => {
+        localStorage.removeItem('role');
+        this.clearCache();
+      })
+    );
+  }
+
+  isAuthenticated(): boolean {
+    // A more robust implementation would involve checking the session on the server side.
+    return !!localStorage.getItem('role');
+  }
+
+  getUserRole(): string | null {
+    return localStorage.getItem('role');
+  }
+
+  private clearCache(): void {
+    if (caches) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      });
+    }
+  }
+}
+```
+
+#### 2. Route Guard
+
+Ensure your routes are protected.
+
+```typescript
+import { Injectable } from '@angular/core';
+import { CanActivate, Router } from '@angular/router';
+import { AuthService } from './auth.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthGuard implements CanActivate {
+
+  constructor(private authService: AuthService, private router: Router) {}
+
+  canActivate(): boolean {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return false;
+    }
+    return true;
+  }
+}
+```
+
+#### 3. Update Routing Module
+
+```typescript
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { AuthGuard } from './auth.guard';
+import { LoginComponent } from './login/login.component';
+import { ProtectedComponent } from './protected/protected.component';
+
+const routes: Routes = [
+  { path: 'login', component: LoginComponent },
+  { path: 'protected', component: ProtectedComponent, canActivate: [AuthGuard] },
+  { path: '', redirectTo: '/login', pathMatch: 'full' }
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule { }
+```
+
+#### 4. Logout Component/Functionality
+
+```typescript
+// navbar.component.ts
+import { Component } from '@angular/core';
+import { AuthService } from './auth.service';
+import { Router } from '@angular/router';
+
+@Component({
+  selector: 'app-navbar',
+  templateUrl: './navbar.component.html',
+  styleUrls: ['./navbar.component.css']
+})
+export class NavbarComponent {
+
+  constructor(private authService: AuthService, private router: Router) {}
+
+  logout(): void {
+    this.authService.logout().subscribe(() => {
+      this.router.navigate(['/login']);
+    });
+  }
+
+  isAuthenticated(): boolean {
+    return this.authService.isAuthenticated();
+  }
+
+  getUserRole(): string | null {
+    return this.authService.getUserRole();
+  }
+}
+
+// navbar.component.html
+<ul class="navbar-nav navbar-right">
+  <li *ngIf="isAuthenticated()">
+    <a class="nav-link" (click)="logout()">Log off</a>
+  </li>
+</ul>
+```
+
+### Conclusion
+
+By setting up cookie-based authentication in your ASP.NET Core backend and updating your Angular frontend to handle login, logout, and authentication checks, you can create a secure authentication flow. Ensure to protect all necessary routes and clear caches as needed to prevent unauthorized access after logout.
