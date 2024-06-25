@@ -1,0 +1,203 @@
+Sure! Here's an updated version of the collapsible sidebar and logout functionality using only CSS and avoiding Bootstrap.
+
+### 1. Update the CSS
+
+**admin-dashboard.component.css:**
+
+```css
+/* General container and layout styling */
+.container-fluid {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.row {
+  flex: 1;
+  display: flex;
+}
+
+.nav-link {
+  color: #000;
+  text-decoration: none;
+  display: block;
+  padding: 10px 15px;
+}
+
+.nav-link.active {
+  font-weight: bold;
+}
+
+.sidebar {
+  height: 100vh;
+  width: 250px;
+  position: fixed;
+  z-index: 1000;
+  top: 0;
+  left: 0;
+  background-color: #f8f9fa;
+  overflow-x: hidden;
+  transition: all 0.3s;
+}
+
+.sidebar.collapsed {
+  width: 0;
+  padding: 0;
+}
+
+.sidebar .nav-link {
+  font-size: 1.1em;
+  padding: 10px 15px;
+}
+
+.main-content {
+  margin-left: 250px; /* Adjust this margin to match sidebar width */
+  transition: margin-left 0.3s;
+  width: calc(100% - 250px);
+}
+
+.main-content.collapsed {
+  margin-left: 0;
+  width: 100%;
+}
+
+/* Custom button styles */
+.btn {
+  display: inline-block;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  border: none;
+  border-radius: 5px;
+  margin-right: 15px;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+  margin-left: auto;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+}
+
+.toggle-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+```
+
+### 2. Update the HTML
+
+**admin-dashboard.component.html:**
+
+```html
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <nav id="sidebarMenu" class="sidebar">
+      <div class="position-sticky">
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" routerLink="/admin">
+              Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/movies">
+              Manage Movies
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/theatres">
+              Manage Theatres
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/shows">
+              Manage Shows
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <main id="mainContent" class="main-content">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <button class="toggle-button" (click)="toggleSidebar()">☰</button>
+        <h1 class="h2">Admin Dashboard</h1>
+        <button class="btn btn-danger" (click)="logout()">Logout</button>
+      </div>
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
+```
+
+### 3. Update the Component
+
+**admin-dashboard.component.ts:**
+
+```typescript
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service'; // Adjust the path as necessary
+
+@Component({
+  selector: 'app-admin-dashboard',
+  templateUrl: './admin-dashboard.component.html',
+  styleUrls: ['./admin-dashboard.component.css']
+})
+export class AdminDashboardComponent {
+  constructor(private authService: AuthService, private router: Router) {}
+
+  logout() {
+    this.authService.logout().subscribe(() => {
+      this.router.navigate(['/login']);
+    });
+  }
+
+  toggleSidebar() {
+    const sidebar = document.getElementById('sidebarMenu');
+    const mainContent = document.getElementById('mainContent');
+    if (sidebar && mainContent) {
+      sidebar.classList.toggle('collapsed');
+      mainContent.classList.toggle('collapsed');
+    }
+  }
+}
+```
+
+### 4. Ensure Proper Import Paths
+
+Make sure all the paths in your imports are correct according to your project structure.
+
+### 5. CSS Reset (Optional)
+
+It might be helpful to include a CSS reset at the top of your CSS file to ensure consistent styling across different browsers:
+
+```css
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+```
+
+### Summary
+
+With these updates, you should have a collapsible sidebar and a logout button that functions without using Bootstrap. The sidebar can be toggled using the button with the `☰` icon, and the logout button will call the `logout` method in your AuthService and redirect the user to the login page. Adjust the styles as needed to match your application's design.
