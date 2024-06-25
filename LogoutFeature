@@ -187,3 +187,53 @@ after clicking on the logout button it is not redirecting to the login page. Als
 </li>
 <li><a class="nav-link" href="javascript:document.getElementById('logoutForm').submit()">Log off</a></li>
 </ul>
+
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private authUrl = 'https://localhost:44353/api/Account/';
+
+  constructor(private http: HttpClient) { }
+
+  login(credentials: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}` +"Login", credentials).pipe(
+      tap(response => {
+        if (response.role) {
+          //localStorage.setItem('token', response.token);
+          localStorage.setItem('role', response.role);
+        }
+      })
+    );
+  }
+
+  registerUser(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}CreateUser`, user);
+  }
+
+  registerAdmin(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}CreateAdmin`, user);
+  }
+
+  logout(): Observable<any> {
+    return this.http.get(`${this.authUrl}Logout`).pipe(
+      tap(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+      })
+    );
+  }
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('token');
+  }
+
+  getUserRole(): string | null {
+    return localStorage.getItem('role');
+  }
+}
