@@ -8,50 +8,25 @@ Here's how to update your backend and Angular service:
 
 2. **Controllers**: Implement login, logout, and user creation logic.
 
-#### 1. Update `Startup.cs` for Cookie Authentication
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Hosting;
 
-```csharp
-public void ConfigureServices(IServiceCollection services)
+namespace YourNamespace
 {
-    services.AddDbContext<ApplicationDbContext>(options =>
-        options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
-
-    services.AddControllersWithViews();
-
-    services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-        .AddCookie(options =>
+    public class Program
+    {
+        public static void Main(string[] args)
         {
-            options.LoginPath = "/api/Account/Login";
-            options.LogoutPath = "/api/Account/Logout";
-        });
-}
+            CreateHostBuilder(args).Build().Run();
+        }
 
-public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
-{
-    if (env.IsDevelopment())
-    {
-        app.UseDeveloperExceptionPage();
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                });
     }
-    else
-    {
-        app.UseExceptionHandler("/Home/Error");
-        app.UseHsts();
-    }
-
-    app.UseHttpsRedirection();
-    app.UseStaticFiles();
-
-    app.UseRouting();
-
-    app.UseAuthentication();
-    app.UseAuthorization();
-
-    app.UseEndpoints(endpoints =>
-    {
-        endpoints.MapControllerRoute(
-            name: "default",
-            pattern: "{controller=Home}/{action=Index}/{id?}");
-    });
 }
 ```
 
