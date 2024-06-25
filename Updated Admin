@@ -1,0 +1,156 @@
+To include a collapsible side navigation bar and a logout button that calls the `LogOut` action in your `AccountController`, you need to update the HTML, the admin component, and your AuthService. Below are the detailed steps:
+
+### 1. Update the HTML
+Add a collapsible sidebar and a logout button in the top left corner:
+
+**admin-dashboard.component.html:**
+```html
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+      <div class="position-sticky">
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" routerLink="/admin">
+              Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/movies">
+              Manage Movies
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/theatres">
+              Manage Theatres
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/shows">
+              Manage Shows
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="false" aria-label="Toggle navigation">
+          ☰
+        </button>
+        <h1 class="h2">Admin Dashboard</h1>
+        <button class="btn btn-danger" (click)="logout()">Logout</button>
+      </div>
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
+```
+
+### 2. Update the AuthService
+Add the logout functionality to call the API endpoint:
+
+**auth.service.ts:**
+```typescript
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class AuthService {
+  private authUrl = 'https://localhost:44353/api/Account/';
+
+  constructor(private http: HttpClient) { }
+
+  login(credentials: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}Login`, credentials).pipe(
+      tap(response => {
+        if (response.role) {
+          localStorage.setItem('token', response.token);
+          localStorage.setItem('role', response.role);
+        }
+      })
+    );
+  }
+
+  registerUser(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}CreateUser`, user);
+  }
+
+  registerAdmin(user: any): Observable<any> {
+    return this.http.post<any>(`${this.authUrl}CreateAdmin`, user);
+  }
+
+  logout(): Observable<any> {
+    return this.http.get(`${this.authUrl}Logout`).pipe(
+      tap(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+      })
+    );
+  }
+
+  isAuthenticated(): boolean {
+    return !!localStorage.getItem('token');
+  }
+
+  getUserRole(): string | null {
+    return localStorage.getItem('role');
+  }
+}
+```
+
+### 3. Update the Admin Component
+Include the logout method and redirect to the login page:
+
+**admin-dashboard.component.ts:**
+```typescript
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service'; // Adjust the path as necessary
+
+@Component({
+  selector: 'app-admin-dashboard',
+  templateUrl: './admin-dashboard.component.html',
+  styleUrls: ['./admin-dashboard.component.css']
+})
+export class AdminDashboardComponent {
+  constructor(private authService: AuthService, private router: Router) {}
+
+  logout() {
+    this.authService.logout().subscribe(() => {
+      this.router.navigate(['/login']);
+    });
+  }
+}
+```
+
+### 4. Ensure Proper Import Paths
+Make sure all the paths in your imports are correct according to your project structure.
+
+### 5. Angular Configuration
+Make sure you have the necessary Angular and Bootstrap setup. You can install Bootstrap using:
+
+```sh
+npm install bootstrap
+```
+
+And include it in your `angular.json` file:
+
+```json
+"styles": [
+  "node_modules/bootstrap/dist/css/bootstrap.min.css",
+  "src/styles.css"
+],
+"scripts": [
+  "node_modules/bootstrap/dist/js/bootstrap.bundle.min.js"
+]
+```
+
+These changes will create a collapsible sidebar, add a logout button, and handle user logout properly, redirecting to the login page upon logout. Adjust the paths and services as necessary based on your project structure.
