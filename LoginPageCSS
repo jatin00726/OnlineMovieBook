@@ -30,3 +30,65 @@
       </div>
     </div>
   </div>
+
+
+
+/* Set the background image and style it */
+body {
+  background: url('path/to/your/background-image.jpg') no-repeat center center fixed;
+  background-size: cover;
+  height: 100vh;
+  margin: 0;
+}
+
+.container {
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Style for the title */
+h1 {
+  color: #fff;
+  font-size: 3rem;
+  font-weight: bold;
+}
+
+/* Style for the card */
+.card {
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Style for the card body */
+.card-body {
+  padding: 2rem;
+}
+
+/* Style for the form controls */
+.form-control {
+  margin-bottom: 1rem;
+}
+
+/* Hover effect for the login button */
+.btn-primary {
+  background-color: #007bff;
+  border: none;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+  border: none;
+}
+
+/* Style for the register link */
+p.text-center a {
+  color: #007bff;
+}
+
+p.text-center a:hover {
+  color: #0056b3;
+  text-decoration: underline;
+}
