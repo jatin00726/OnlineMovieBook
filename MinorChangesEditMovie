@@ -1,0 +1,581 @@
+---EditMovieHTML---
+<div class="card">
+    <div class="card-body" >
+      <h5 class="card-title">Edit Movie</h5>
+      <form (ngSubmit)="onSubmit()" #editForm="ngForm">
+        <div class="mb-3">
+          <label for="name" class="form-label">Name</label>
+          <input type="text" class="form-control" id="name" name="name" [(ngModel)]="movie.name" required>
+        </div>
+        <div class="mb-3">
+          <label for="imdbRating" class="form-label">IMDb Rating</label>
+          <select class="form-select" id="imdbRating" name="imdbRating" [(ngModel)]="movie.imdbRating" required>
+            <option value="1">1 Star</option>
+            <option value="2">2 Stars</option>
+            <option value="3">3 Stars</option>
+            <option value="4">4 Stars</option>
+            <option value="5">5 Stars</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="category" class="form-label">Category</label>
+          <select class="form-select" id="category" name="category" [(ngModel)]="movie.categoryId" required>
+            <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="genre" class="form-label">Genre</label>
+          <select class="form-select" id="genre" name="genre" [(ngModel)]="movie.genreId" required>
+            <option *ngFor="let genre of genres" [value]="genre.id">{{ genre.name }}</option>
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="releaseDate" class="form-label">Release Date</label>
+          <input type="date" class="form-control" id="releaseDate" name="releaseDate" [(ngModel)]="movie.releaseDate" required>
+        </div>
+        <div class="mb-3">
+          <label for="duration" class="form-label">Duration (minutes)</label>
+          <input type="number" class="form-control" id="duration" name="duration" [(ngModel)]="movie.duration" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Submit</button>
+      </form>
+    </div>
+  </div>
+
+---EditMovieComponent---
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { CategoryService } from '../../services/category.service';
+import { GenreService } from '../../services/genre.service';
+import { MovieService } from '../../services/movie.service';
+import { NgForm } from '@angular/forms';
+
+@Component({
+  selector: 'app-edit-movie',
+  templateUrl: './edit-movie.component.html',
+  styleUrls: ['./edit-movie.component.css']
+})
+export class EditMovieComponent implements OnInit {
+  movie: any = {}; // Object to hold movie data
+  categories: any[] = [];
+  genres: any[] = [];
+  themePhotoPath: string = '';
+
+  constructor(
+    private movieService: MovieService,
+    private categoryService: CategoryService,
+    private genreService: GenreService,
+    private route: ActivatedRoute,
+    private router: Router
+  ) { }
+
+  ngOnInit(): void {
+    this.route.params.subscribe(params => {
+      this.movie = +params['id'];
+      this.loadMovieDetails();
+    });
+    this.loadCategories();
+    this.loadGenres();
+  }
+
+  loadMovieDetails(): void {
+    this.movieService.getMovies().subscribe(movies => {
+      this.movie = movies;
+
+    // this.movieService.getMovie(this.movie).subscribe((data: movie) => {
+    //   this.movie = data;
+    });
+  }
+
+  loadCategories(): void {
+    this.categoryService.getCategories().subscribe(
+      categories => {
+        this.categories = categories;
+      },
+      error => {
+        console.error('Error loading categories:', error);
+      }
+    );
+  }
+
+  loadGenres(): void {
+    this.genreService.getGenres().subscribe(
+      genres => {
+        this.genres = genres;
+      },
+      error => {
+        console.error('Error loading genres:', error);
+      }
+    );
+  }
+
+  onSubmit(): void {
+    this.movieService.editMovie(this.movie).subscribe(() => {
+      this.router.navigate(['/movies-management']);
+    });
+  }
+}
+
+---MovieHTML---
+import { Component, OnInit } from '@angular/core';
+import { NgForm } from '@angular/forms';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { MovieService } from '../../services/movie.service';
+import { Router } from '@angular/router';
+import { CategoryService } from '../../services/category.service';
+import { GenreService } from '../../services/genre.service';
+
+@Component({
+  selector: 'app-movies-management',
+  templateUrl: './movies-management.component.html',
+  styleUrls: ['./movies-management.component.css']
+})
+export class MoviesManagementComponent implements OnInit {
+  movies: any[] = [];
+  selectedMovie: any = {};
+  isEdit = false;
+  selectedFile:File | null = null;
+  categories: any[]=[];
+  genres: any[]=[];
+
+  constructor(
+    private modalService: NgbModal,
+    private movieService: MovieService,
+    private router : Router,
+    private categoryService: CategoryService,
+    private genreService: GenreService
+  ) {}
+
+  ngOnInit(): void {
+    this.loadMovies();
+    this.loadCategories();
+    this.loadGenres();
+  }
+
+  loadMovies(): void {
+    this.movieService.getMovies().subscribe(movies => {
+      this.movies = movies;
+    });
+  }
+
+  loadCategories(): void {
+    this.categoryService.getCategories().subscribe(
+      categories => {
+        this.categories = categories;
+      },
+      error => {
+        console.error('Error loading categories:', error);
+      }
+    );
+  }
+
+  loadGenres(): void {
+    this.genreService.getGenres().subscribe(
+      genres => {
+        this.genres = genres;
+      },
+      error => {
+        console.error('Error loading genres:', error);
+      }
+    );
+  }
+
+  openModal(content: any, movie?: any): void {
+    if (movie) {
+      this.isEdit = true;
+      this.selectedMovie = { ...movie };
+    } else {
+      this.isEdit = false;
+      this.selectedMovie = {};
+    }
+    this.modalService.open(content, { ariaLabelledBy: 'modal-basic-title' });
+  }
+
+  onSubmit(movieForm: any): void {
+    if (movieForm.valid) {
+      if (this.isEdit) {
+        this.movieService.editMovie(this.selectedMovie).subscribe(() => {
+          this.loadMovies();
+          this.modalService.dismissAll();
+        });
+      } else {
+        this.movieService.addMovie(this.selectedMovie).subscribe(() => {
+          this.loadMovies();
+          this.modalService.dismissAll();
+        });
+      }
+    }
+  }
+
+  onFileChange(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedFile = file;
+    }
+  }
+
+  editMovie(content: any, movie: any): void {
+    this.openModal(content, movie);
+  }
+
+  deleteMovie(movie: any): void {
+    if (confirm('Are you sure you want to delete this movie?')) {
+      this.movieService.deleteMovie(movie.id).subscribe(() => {
+        this.loadMovies();
+      });
+    }
+  }
+
+  goToAddMovie():void{
+    this.router.navigate(['/add-movie']);
+  }
+}
+
+---MovieHTML---
+<div class="container mt-4">
+    <div class="card">
+      <div class="card-header">
+        <h3>Movies Management</h3>
+      </div>
+      <div class="card-body">
+        <button class="btn btn-primary mb-3" [routerLink]="['/admin/add-movie']">Add New Movie</button>
+        <table class="table table-bordered">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let movie of movies">
+              <td>{{ movie.name }}</td>
+              <td>
+                <button class="btn btn-warning mr-2" (click)="openModal(content,movie)">Edit</button>
+                <button class="btn btn-danger" (click)="deleteMovie(movie)">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  
+    <!-- Modal for Add/Edit Movie -->
+    <ng-template #content let-modal>
+      <div class="modal-header">
+        <h4 class="modal-title">{{ isEdit ? 'Edit Movie' : 'Add New Movie' }}</h4>
+        <button type="button" class="close" aria-label="Close" (click)="modal.dismiss('Cross click')">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <form #movieForm="ngForm" (ngSubmit)="onSubmit(movieForm)">
+          <div class="mb-3">
+            <label for="name" class="form-label">Name</label>
+            <input type="text" class="form-control" id="name" name="name" [(ngModel)]="selectedMovie.name" required>
+          </div>
+          <div class="mb-3">
+            <label for="imdbRating" class="form-label">IMDb Rating</label>
+            <select class="form-select" id="imdbRating" name="imdbRating" [(ngModel)]="selectedMovie.imdbRating" required>
+              <option value="1">1 Star</option>
+              <option value="2">2 Stars</option>
+              <option value="3">3 Stars</option>
+              <option value="4">4 Stars</option>
+              <option value="5">5 Stars</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="category" class="form-label">Category</label>
+            <select class="form-select" id="category" name="category" [(ngModel)]="selectedMovie.category" required>
+              <option *ngFor="let category of categories" [value]="category.name">{{ category.name }}</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="genre" class="form-label">Genre</label>
+            <select class="form-select" id="genre" name="genre" [(ngModel)]="selectedMovie.genre" required>
+              <option *ngFor="let genre of genres" [value]="genre.name">{{ genre.name }}</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="releaseDate" class="form-label">Release Date</label>
+            <input type="date" class="form-control" id="releaseDate" name="releaseDate" [(ngModel)]="selectedMovie.releaseDate" required>
+          </div>
+          <div class="mb-3">
+            <label for="duration" class="form-label">Duration (minutes)</label>
+            <input type="number" class="form-control" id="duration" name="duration" [(ngModel)]="selectedMovie.duration" required>
+          </div>
+          <div class="mb-3">
+            <label for="themePhoto" class="form-label">Theme Photo</label>
+            <input type="file" class="form-control" id="themePhotoPath" name="themePhotoPath" (change)="onFileChange($event)" [(ngModel)]="selectedMovie.themePhotoPath" accept="image/*" required>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="modal.dismiss('Cancel click')">Cancel</button>
+            <button type="submit" class="btn btn-primary">{{ isEdit ? 'Save changes' : 'Add Movie' }}</button>
+          </div>
+        </form>
+      </div>
+    </ng-template>
+  </div>
+
+---MovieService---
+
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from 'src/environments/environment';
+@Injectable({
+  providedIn: 'root'
+})
+export class MovieService {
+ // private apiUrl = `${environemnt.apiUrl}/movie`;
+ 
+  constructor(private http: HttpClient) { }
+  apiUrl="https://localhost:44353/api/Movie/"
+
+  getMovies(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}`);
+  }
+ 
+  getMovie(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
+  }
+ 
+  addMovie(movie: any): Observable<any> {
+    //return this.http.post<any>(`${this.apiUrl}`, movie);
+    return this.http.post<any>(`${this.apiUrl}`+"PostMovie",movie)
+  }
+ 
+  editMovie(movie: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}` +"UpdateMovie", movie);
+  }
+ 
+  deleteMovie(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}${id}`);
+  }
+
+  uploadImage(formData : FormData){
+    return this.http.post(`${this.apiUrl}` + "upload-image",formData);
+  }
+}
+
+---MovirDAl---
+using Book_My_Show_DAL.Interfaces;
+using Book_My_Show_Entities;
+using Dapper;
+using Microsoft.Extensions.Configuration;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Book_My_Show_DAL.Implementations
+{
+    public class MovieServices : IMovieServices
+    {
+        private readonly DapperContext _dapperContext;
+
+        public MovieServices(DapperContext dapperContext)
+        {
+            _dapperContext = dapperContext;
+        }
+
+        public async Task<int> Add(Movie movie)
+        {
+            using (var connection = _dapperContext.CreateConnection())
+            {
+                var sqlQuery = "spc_insertMovie";
+
+                var parameters = new DynamicParameters();
+                parameters.Add("Name", movie.Name, DbType.String);
+                parameters.Add("ImdbRating", movie.ImdbRating, DbType.Double);
+                parameters.Add("Category", movie.Category, DbType.String);
+                parameters.Add("Genre", movie.Genre, DbType.String);
+                parameters.Add("ReleaseDate", movie.ReleaseDate, DbType.Date);
+                parameters.Add("Duration", movie.Duration, DbType.Int32);
+                parameters.Add("ThemePhotoPath", movie.ThemePhotoPath, DbType.String);
+
+                // Define the output parameter
+                parameters.Add("Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+                connection.Execute(sqlQuery, parameters, commandType: CommandType.StoredProcedure);
+
+                // Retrieve the output value
+                int result = parameters.Get<int>("Result");
+
+                return result;
+            }
+        }
+        public async Task<int> Delete(int id)
+        {
+            try
+            {
+                using (var connection = _dapperContext.CreateConnection())
+                {
+                    var sqlQuery = "DELETE FROM Movie where Id = @id";
+                    var res = connection.Execute(sqlQuery, new { id });
+                    if (res != null)
+                    {
+                        return 1;
+                    }
+                    return 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<Movie> Get(int id)
+        {
+            try
+            {
+                using (var connection = _dapperContext.CreateConnection())
+                {
+                    var sqlQuery = "SELECT * FROM Movie where Id = @id";
+                    return connection.Query<Movie>(sqlQuery, new { @Id = id }).Single();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<List<Movie>> GetAll()
+        {
+            try
+            {
+                using (var connection = _dapperContext.CreateConnection())
+                {
+                    var sqlQuery = "SELECT * FROM Movie";
+                    return connection.Query<Movie>(sqlQuery).ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<List<Category>> GetByCategory()
+        {
+            using (var connection = _dapperContext.CreateConnection())
+            {
+                var sqlQuery = "SELECT * FROM Category";
+                var res = connection.Query<Category>(sqlQuery).ToList();
+                return res;
+            }
+        }
+
+        public async Task<List<Genre>> GetByGenre()
+        {
+            try
+            {
+                using (var connection = _dapperContext.CreateConnection())
+                {
+                    var sqlQuery = "SELECT * FROM Genre";
+                    var res = connection.Query<Genre>(sqlQuery).ToList();
+                    return res;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<List<Movie>> GetByName(string Name)
+        {
+            try
+            {
+                using (var connection = _dapperContext.CreateConnection())
+                {
+                    var sqlQuery = "SELECT * FROM Movie where Name like @Name";
+                    return connection.Query<Movie>(sqlQuery, new { @Name = Name }).ToList();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<List<Movie>> GetByStarNames(string ActorName, string ActressName)
+        {
+            try { 
+            using (var connection = _dapperContext.CreateConnection())
+            {
+                var sqlQuery = "SELECT * FROM Movie where ActorName like @ActorName and ActressName like @ActressName";
+                return connection.Query<Movie>(sqlQuery, new { @ActorName = ActorName, @ActressName = ActressName }).ToList();
+            }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<int> Update(Movie movie)
+        {
+            try { 
+            using (var connection = _dapperContext.CreateConnection())
+            {
+                var sqlQuery = "UPDATE Movie SET Name = @Name, ImdbRating = @ImdbRating, Category = @Category, Genre = @Genre, ReleaseDate = @ReleaseDate, ThemePhotoPath = @ThemePhotoPath where Id = @Id";
+                var res = connection.Execute(sqlQuery, movie);
+                if (res != null)
+                {
+                    return 1;
+                }
+                return 0;
+            }
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+    }
+}
+
+---MovieEntities---
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Book_My_Show_Entities
+{
+    public class Movie
+    {
+        [Key]
+        public int? Id { get; set; }
+
+        public string Name { get; set; }
+
+        public decimal ImdbRating { get; set; }
+
+        //[EnumDataType(typeof(MovieCategory))]
+        public string Category { get; set; }
+
+        
+        //[EnumDataType(typeof(MovieGenre))]
+        public string Genre { get; set; }
+
+        
+        public DateTime ReleaseDate { get; set; }
+
+        public int Duration { get; set; }
+        
+        //public string? ActorName { get; set; }
+
+        //public string? ActressName { get; set; }
+
+        public string ThemePhotoPath { get; set; }
+    }
+}
+
+
+I have provided the code for EditMOvieHTML ,EditMovieComponent,MovieHTML, MOvieComponent, MOvieService, MovieDAL, MOVIE Entitie. Correct the Release date as the date format in the Edit HTML And MOvie Entites Mismatch Hence the binding is not possible. Also correct the div in edit for the theme photo it should take a string as file name and return it to the data base.
