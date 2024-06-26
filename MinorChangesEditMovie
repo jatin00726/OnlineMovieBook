@@ -480,4 +480,295 @@ namespace Book_My_Show_Entities
 I have provided the code for MovieHTML, MovieComponent, MovieService, MovieDAL, MOVIE Entitie. Two things to be Implemented The when chosing the file the file path is not updating in the database and also when a particular movie is being edited the exixting  release date is not displayed. Implement the above fuctionalities.
 
 
+To implement the required functionalities, we need to make changes in both the frontend and backend. Here's how we can approach each issue:
 
+1. **Updating the file path in the database when a file is chosen:**
+   - We need to ensure that the selected file is uploaded and the path is saved in the database.
+   - We will add a function in the `MovieService` to handle file uploads and update the backend to support this.
+
+2. **Displaying the existing release date when editing a movie:**
+   - We need to ensure the existing release date is correctly formatted and displayed in the date input field when editing a movie.
+
+### Frontend Changes (Angular)
+
+#### MoviesManagementComponent.ts
+1. Update the `onFileChange` method to store the file in `selectedMovie.themePhotoPath` and add an `uploadFile` method to handle file uploads.
+2. Update the `onSubmit` method to handle the file upload before submitting the form.
+3. Correct the `formatDate` method to handle the existing date correctly when editing.
+
+```typescript
+import { Component, OnInit } from '@angular/core';
+import { NgForm } from '@angular/forms';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { MovieService } from '../../services/movie.service';
+import { Router } from '@angular/router';
+import { CategoryService } from '../../services/category.service';
+import { GenreService } from '../../services/genre.service';
+
+@Component({
+  selector: 'app-movies-management',
+  templateUrl: './movies-management.component.html',
+  styleUrls: ['./movies-management.component.css']
+})
+export class MoviesManagementComponent implements OnInit {
+  movie: any = {};
+  movies: any[] = [];
+  selectedMovie: any = {};
+  isEdit = false;
+  selectedFile: File | null = null;
+  categories: any[] = [];
+  genres: any[] = [];
+
+  constructor(
+    private modalService: NgbModal,
+    private movieService: MovieService,
+    private router: Router,
+    private categoryService: CategoryService,
+    private genreService: GenreService
+  ) {}
+
+  ngOnInit(): void {
+    this.loadMovies();
+    this.loadCategories();
+    this.loadGenres();
+  }
+
+  loadMovies(): void {
+    this.movieService.getMovies().subscribe(movies => {
+      this.movies = movies;
+    });
+  }
+
+  loadCategories(): void {
+    this.categoryService.getCategories().subscribe(
+      categories => {
+        this.categories = categories;
+      },
+      error => {
+        console.error('Error loading categories:', error);
+      }
+    );
+  }
+
+  loadGenres(): void {
+    this.genreService.getGenres().subscribe(
+      genres => {
+        this.genres = genres;
+      },
+      error => {
+        console.error('Error loading genres:', error);
+      }
+    );
+  }
+
+  openModal(content: any, movie?: any): void {
+    if (movie) {
+      this.isEdit = true;
+      this.selectedMovie = { ...movie };
+      this.selectedMovie.releaseDate = this.formatDateForInput(this.selectedMovie.releaseDate);
+    } else {
+      this.isEdit = false;
+      this.selectedMovie = {};
+    }
+    this.modalService.open(content, { ariaLabelledBy: 'modal-basic-title' });
+  }
+
+  formatDateForInput(date: string): string {
+    const d = new Date(date);
+    const month = '' + (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = '' + d.getDate().toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return [year, month, day].join('-');
+  }
+
+  formatDate(event: any): void {
+    const date = new Date(event);
+    const formattedDate = [
+      date.getFullYear(),
+      (date.getMonth() + 1).toString().padStart(2, '0'),
+      date.getDate().toString().padStart(2, '0')
+    ].join('-');
+    this.selectedMovie.releaseDate = formattedDate;
+  }
+
+  onSubmit(movieForm: any): void {
+    if (movieForm.valid) {
+      if (this.selectedFile) {
+        this.uploadFile().subscribe(() => {
+          this.saveMovie();
+        });
+      } else {
+        this.saveMovie();
+      }
+    }
+  }
+
+  uploadFile(): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', this.selectedFile);
+    return this.movieService.uploadImage(formData);
+  }
+
+  saveMovie(): void {
+    if (this.isEdit) {
+      this.movieService.editMovie(this.selectedMovie).subscribe(() => {
+        this.loadMovies();
+        this.modalService.dismissAll();
+      });
+    } else {
+      this.movieService.addMovie(this.selectedMovie).subscribe(() => {
+        this.loadMovies();
+        this.modalService.dismissAll();
+      });
+    }
+  }
+
+  onFileChange(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedFile = file;
+      this.selectedMovie.themePhotoPath = file.name;
+    }
+  }
+
+  editMovie(content: any, movie: any): void {
+    this.isEdit = true;
+    this.selectedMovie = { ...movie };
+    this.selectedMovie.releaseDate = this.formatDateForInput(this.selectedMovie.releaseDate);
+    this.modalService.open(content, { ariaLabelledBy: 'modal-basic-title' });
+  }
+
+  deleteMovie(movie: any): void {
+    if (confirm('Are you sure you want to delete this movie?')) {
+      this.movieService.deleteMovie(movie.id).subscribe(() => {
+        this.loadMovies();
+      });
+    }
+  }
+
+  goToAddMovie(): void {
+    this.router.navigate(['/add-movie']);
+  }
+}
+```
+
+#### MovieService.ts
+Update the `addMovie` and `editMovie` methods to handle the `themePhotoPath` correctly.
+
+```typescript
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class MovieService {
+  apiUrl = 'https://localhost:44353/api/Movie/';
+
+  constructor(private http: HttpClient) {}
+
+  getMovies(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}`);
+  }
+
+  getMovie(id: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${id}`);
+  }
+
+  addMovie(movie: any): Observable<any> {
+    return this.http.post<any>(`${this.apiUrl}PostMovie`, movie);
+  }
+
+  editMovie(movie: any): Observable<any> {
+    return this.http.put<any>(`${this.apiUrl}`, movie);
+  }
+
+  deleteMovie(id: number): Observable<any> {
+    return this.http.delete<any>(`${this.apiUrl}${id}`);
+  }
+
+  uploadImage(formData: FormData): Observable<any> {
+    return this.http.post(`${this.apiUrl}upload-image`, formData);
+  }
+}
+```
+
+### Backend Changes (ASP.NET Core)
+
+#### MovieServices.cs
+1. Update the `Add` and `Update` methods to handle the `ThemePhotoPath` correctly.
+
+```csharp
+public async Task<int> Add(Movie movie)
+{
+    using (var connection = _dapperContext.CreateConnection())
+    {
+        var sqlQuery = "spc_insertMovie";
+
+        var parameters = new DynamicParameters();
+        parameters.Add("Name", movie.Name, DbType.String);
+        parameters.Add("ImdbRating", movie.ImdbRating, DbType.Double);
+        parameters.Add("Category", movie.Category, DbType.String);
+        parameters.Add("Genre", movie.Genre, DbType.String);
+        parameters.Add("ReleaseDate", movie.ReleaseDate, DbType.Date);
+        parameters.Add("Duration", movie.Duration, DbType.Int32);
+        parameters.Add("ThemePhotoPath", movie.ThemePhotoPath, DbType.String);
+
+        // Define the output parameter
+        parameters.Add("Result", dbType: DbType.Int32, direction: ParameterDirection.Output);
+
+        connection.Execute(sqlQuery, parameters, commandType: CommandType.StoredProcedure);
+
+        // Retrieve the output value
+        int result = parameters.Get<int>("Result");
+
+        return result;
+    }
+}
+
+public async Task<int> Update(Movie movie)
+{
+    using (var connection = _dapperContext.CreateConnection())
+    {
+        var sqlQuery = "UPDATE Movie SET Name = @Name, ImdbRating = @ImdbRating, Category = @Category, Genre = @Genre, ReleaseDate = @ReleaseDate, ThemePhotoPath = @ThemePhotoPath where Id = @Id";
+        var res = connection.Execute(sqlQuery, movie);
+        if (res != null)
+        {
+            return 1;
+        }
+        return 0;
+    }
+}
+```
+
+#### MovieController.cs
+1. Add a method to handle the file upload.
+
+```csharp
+[HttpPost("upload-image")]
+public async Task<IActionResult> UploadImage([FromForm] IFormFile file)
+{
+    if (file == null || file.Length == 0)
+        return BadRequest("No file uploaded");
+
+    var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot/images", file.FileName);
+
+    using (var stream = new FileStream(filePath, FileMode.Create))
+    {
+        await file.CopyToAsync(stream);
+    }
+
+    return Ok(new { filePath });
+}
+```
+
+### Testing
+
+1. **File Upload:**
+   - Choose a file and ensure it gets uploaded correctly. Check if the `themePhotoPath` is updated in the database.
+   - Verify the uploaded file's path is correctly stored and displayed in the UI.
+
+2. **Edit Movie:**
+   - When editing a movie, check if the existing release date is correctly displayed in the date input field.
+  
