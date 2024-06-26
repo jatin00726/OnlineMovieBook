@@ -1,8 +1,6 @@
-To address the issues with the release date format mismatch and the theme photo handling, we'll make a few adjustments in the `EditMovieHTML`, `EditMovieComponent`, and `MovieEntities`. Specifically, we'll ensure the date format is consistent, and we'll handle the theme photo filename properly.
+To ensure that the input type date in the Edit Movie HTML uses the format `yyyy/mm/dd`, you'll need to adjust the HTML input and ensure the Angular component handles the date conversion properly. Below are the changes to accomplish this:
 
 ### EditMovieHTML
-We'll update the input field for `releaseDate` to ensure it's formatted correctly and modify the input for `themePhotoPath` to handle the file name as a string.
-
 ```html
 <div class="card">
     <div class="card-body">
@@ -36,16 +34,15 @@ We'll update the input field for `releaseDate` to ensure it's formatted correctl
             </div>
             <div class="mb-3">
                 <label for="releaseDate" class="form-label">Release Date</label>
-                <input type="date" class="form-control" id="releaseDate" name="releaseDate" [(ngModel)]="movie.releaseDate" required>
+                <input type="date" class="form-control" id="releaseDate" name="releaseDate" [(ngModel)]="movie.releaseDate" (ngModelChange)="formatDate($event)" required>
             </div>
             <div class="mb-3">
                 <label for="duration" class="form-label">Duration (minutes)</label>
                 <input type="number" class="form-control" id="duration" name="duration" [(ngModel)]="movie.duration" required>
             </div>
             <div class="mb-3">
-                <label for="themePhoto" class="form-label">Theme Photo</label>
-                <input type="file" class="form-control" id="themePhoto" (change)="onFileChange($event)">
-                <input type="hidden" name="themePhotoPath" [(ngModel)]="movie.themePhotoPath">
+                <label for="themePhotoPath" class="form-label">Theme Photo</label>
+                <input type="text" class="form-control" id="themePhotoPath" name="themePhotoPath" [(ngModel)]="movie.themePhotoPath" required>
             </div>
             <button type="submit" class="btn btn-primary">Submit</button>
         </form>
@@ -54,14 +51,14 @@ We'll update the input field for `releaseDate` to ensure it's formatted correctl
 ```
 
 ### EditMovieComponent
-We need to handle the file input change event to set the `themePhotoPath` correctly.
-
+Add a `formatDate` method to handle the date format conversion:
 ```typescript
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { CategoryService } from '../../services/category.service';
 import { GenreService } from '../../services/genre.service';
 import { MovieService } from '../../services/movie.service';
+import { NgForm } from '@angular/forms';
 
 @Component({
   selector: 'app-edit-movie',
@@ -72,7 +69,7 @@ export class EditMovieComponent implements OnInit {
   movie: any = {}; // Object to hold movie data
   categories: any[] = [];
   genres: any[] = [];
-  selectedFile: File | null = null;
+  themePhotoPath: string = '';
 
   constructor(
     private movieService: MovieService,
@@ -92,8 +89,9 @@ export class EditMovieComponent implements OnInit {
   }
 
   loadMovieDetails(): void {
-    this.movieService.getMovie(this.movie.id).subscribe((data: any) => {
+    this.movieService.getMovie(this.movie).subscribe((data: any) => {
       this.movie = data;
+      this.movie.releaseDate = this.formatDateForInput(data.releaseDate);
     });
   }
 
@@ -119,27 +117,25 @@ export class EditMovieComponent implements OnInit {
     );
   }
 
-  onFileChange(event: any): void {
-    const file = event.target.files[0];
-    if (file) {
-      this.selectedFile = file;
-      this.movie.themePhotoPath = file.name; // Update themePhotoPath with the file name
-    }
+  formatDateForInput(date: string): string {
+    const d = new Date(date);
+    const month = '' + (d.getMonth() + 1).toString().padStart(2, '0');
+    const day = '' + d.getDate().toString().padStart(2, '0');
+    const year = d.getFullYear();
+    return [year, month, day].join('-');
+  }
+
+  formatDate(event: any): void {
+    const date = new Date(event);
+    const formattedDate = [
+      date.getFullYear(),
+      (date.getMonth() + 1).toString().padStart(2, '0'),
+      date.getDate().toString().padStart(2, '0')
+    ].join('-');
+    this.movie.releaseDate = formattedDate;
   }
 
   onSubmit(): void {
-    if (this.selectedFile) {
-      const formData = new FormData();
-      formData.append('file', this.selectedFile);
-      this.movieService.uploadImage(formData).subscribe(() => {
-        this.saveMovie();
-      });
-    } else {
-      this.saveMovie();
-    }
-  }
-
-  saveMovie(): void {
     this.movieService.editMovie(this.movie).subscribe(() => {
       this.router.navigate(['/movies-management']);
     });
@@ -147,12 +143,15 @@ export class EditMovieComponent implements OnInit {
 }
 ```
 
-### MovieEntities
-We'll make sure the release date is correctly represented as a `DateTime`.
-
+### Movie Entities
+Ensure the date format is handled correctly in the backend:
 ```csharp
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Book_My_Show_Entities
 {
@@ -169,6 +168,8 @@ namespace Book_My_Show_Entities
 
         public string Genre { get; set; }
 
+        [DataType(DataType.Date)]
+        [DisplayFormat(DataFormatString = "{0:yyyy-MM-dd}", ApplyFormatInEditMode = true)]
         public DateTime ReleaseDate { get; set; }
 
         public int Duration { get; set; }
@@ -178,4 +179,4 @@ namespace Book_My_Show_Entities
 }
 ```
 
-These changes ensure the release date is correctly formatted and the theme photo filename is properly handled and sent to the backend for storage.
+These changes ensure that the date input field is compatible with the `yyyy-mm-dd` format, which aligns with HTML5 input date requirements and ensures the date is correctly formatted for the backend.
