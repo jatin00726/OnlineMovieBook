@@ -133,3 +133,88 @@ export class AppRoutingModule { }
 
 
   Add the Authentication using the AuthGaurd when the user logouts no one should be able to access the booktickets button in the movie-detail-modalHTML.
+----------------‐-----------------
+
+
+To ensure that the "Book Tickets" button in the `movie-detail-modalHTML` is only accessible to authenticated users, we need to integrate the `AuthGuardComponent` into the logic that displays this button. Here’s how you can achieve this:
+
+1. **Update the `MovieDetailModalComponent` to use the `AuthGuardComponent` to check authentication:**
+
+Add a dependency on `AuthService` to `MovieDetailModalComponent` and use it to conditionally render the "Book Tickets" button based on authentication status.
+
+**Updated `MovieDetailModalComponent`:**
+
+```typescript
+import { Component, Input } from '@angular/core';
+import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+import { CityModalComponent } from '../city-modal/city-modal.component';
+
+@Component({
+  selector: 'app-movie-detail-modal',
+  templateUrl: './movie-detail-modal.component.html',
+  styleUrls: ['./movie-detail-modal.component.css']
+})
+export class MovieDetailModalComponent {
+  @Input() movie: any;
+
+  constructor(
+    public activeModal: NgbActiveModal,
+    private modalService: NgbModal,
+    private router: Router,
+    private authService: AuthService
+  ) {}
+
+  dismiss(): void {
+    this.activeModal.dismiss();
+  }
+
+  bookTickets(): void {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return;
+    }
+    this.activeModal.close();
+    const modalRef = this.modalService.open(CityModalComponent);
+    modalRef.componentInstance.movie = this.movie;
+    modalRef.result.then((result: {city:string, show: any, seats: number[]}) => {
+      console.log('selected city:', result.city);
+      console.log('selected show:', result.show);
+      console.log('selected seats:', result.seats);
+      this.router.navigate(['/', {movieId: this.movie.id, city: result.city, showId: result.show.id, seats: result.seats.join(',')}]);
+    }, () => {
+
+    });
+  }
+
+  isAuthenticated(): boolean {
+    return this.authService.isAuthenticated();
+  }
+}
+```
+
+2. **Update the `movie-detail-modal.component.html` to conditionally render the "Book Tickets" button:**
+
+Use Angular's structural directives to conditionally show the button based on the authentication status.
+
+**Updated `movie-detail-modal.component.html`:**
+
+```html
+<div class="modal-header">
+  <h4 class="modal-title">{{ movie?.name }}</h4>
+  <button type="button" class="close" aria-label="Close" (click)="dismiss()">
+    <span aria-hidden="true">&times;</span>
+  </button>
+</div>
+<div class="modal-body">
+  <p><strong>IMDb Rating:</strong> {{ movie?.imdbRating }}</p>
+  <p><strong>Duration:</strong> {{ movie?.duration }}</p>
+</div>
+<div class="modal-footer">
+  <button *ngIf="isAuthenticated()" type="button" class="btn btn-primary" (click)="bookTickets()">Book Tickets</button>
+  <button *ngIf="!isAuthenticated()" type="button" class="btn btn-secondary" (click)="dismiss()">Close</button>
+</div>
+```
+
+With these changes, the "Book Tickets" button will only be displayed if the user is authenticated. If not, a "Close" button will be displayed instead. When an unauthenticated user tries to book tickets, they will be redirected to the login page.
