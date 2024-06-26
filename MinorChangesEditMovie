@@ -771,4 +771,6 @@ public async Task<IActionResult> UploadImage([FromForm] IFormFile file)
 
 2. **Edit Movie:**
    - When editing a movie, check if the existing release date is correctly displayed in the date input field.
+
+2024-06-27 00:00:00.000
   
