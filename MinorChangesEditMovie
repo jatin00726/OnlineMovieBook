@@ -1,122 +1,4 @@
----EditMovieHTML---
-<div class="card">
-    <div class="card-body" >
-      <h5 class="card-title">Edit Movie</h5>
-      <form (ngSubmit)="onSubmit()" #editForm="ngForm">
-        <div class="mb-3">
-          <label for="name" class="form-label">Name</label>
-          <input type="text" class="form-control" id="name" name="name" [(ngModel)]="movie.name" required>
-        </div>
-        <div class="mb-3">
-          <label for="imdbRating" class="form-label">IMDb Rating</label>
-          <select class="form-select" id="imdbRating" name="imdbRating" [(ngModel)]="movie.imdbRating" required>
-            <option value="1">1 Star</option>
-            <option value="2">2 Stars</option>
-            <option value="3">3 Stars</option>
-            <option value="4">4 Stars</option>
-            <option value="5">5 Stars</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label for="category" class="form-label">Category</label>
-          <select class="form-select" id="category" name="category" [(ngModel)]="movie.categoryId" required>
-            <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label for="genre" class="form-label">Genre</label>
-          <select class="form-select" id="genre" name="genre" [(ngModel)]="movie.genreId" required>
-            <option *ngFor="let genre of genres" [value]="genre.id">{{ genre.name }}</option>
-          </select>
-        </div>
-        <div class="mb-3">
-          <label for="releaseDate" class="form-label">Release Date</label>
-          <input type="date" class="form-control" id="releaseDate" name="releaseDate" [(ngModel)]="movie.releaseDate" required>
-        </div>
-        <div class="mb-3">
-          <label for="duration" class="form-label">Duration (minutes)</label>
-          <input type="number" class="form-control" id="duration" name="duration" [(ngModel)]="movie.duration" required>
-        </div>
-        <button type="submit" class="btn btn-primary">Submit</button>
-      </form>
-    </div>
-  </div>
-
----EditMovieComponent---
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { CategoryService } from '../../services/category.service';
-import { GenreService } from '../../services/genre.service';
-import { MovieService } from '../../services/movie.service';
-import { NgForm } from '@angular/forms';
-
-@Component({
-  selector: 'app-edit-movie',
-  templateUrl: './edit-movie.component.html',
-  styleUrls: ['./edit-movie.component.css']
-})
-export class EditMovieComponent implements OnInit {
-  movie: any = {}; // Object to hold movie data
-  categories: any[] = [];
-  genres: any[] = [];
-  themePhotoPath: string = '';
-
-  constructor(
-    private movieService: MovieService,
-    private categoryService: CategoryService,
-    private genreService: GenreService,
-    private route: ActivatedRoute,
-    private router: Router
-  ) { }
-
-  ngOnInit(): void {
-    this.route.params.subscribe(params => {
-      this.movie = +params['id'];
-      this.loadMovieDetails();
-    });
-    this.loadCategories();
-    this.loadGenres();
-  }
-
-  loadMovieDetails(): void {
-    this.movieService.getMovies().subscribe(movies => {
-      this.movie = movies;
-
-    // this.movieService.getMovie(this.movie).subscribe((data: movie) => {
-    //   this.movie = data;
-    });
-  }
-
-  loadCategories(): void {
-    this.categoryService.getCategories().subscribe(
-      categories => {
-        this.categories = categories;
-      },
-      error => {
-        console.error('Error loading categories:', error);
-      }
-    );
-  }
-
-  loadGenres(): void {
-    this.genreService.getGenres().subscribe(
-      genres => {
-        this.genres = genres;
-      },
-      error => {
-        console.error('Error loading genres:', error);
-      }
-    );
-  }
-
-  onSubmit(): void {
-    this.movieService.editMovie(this.movie).subscribe(() => {
-      this.router.navigate(['/movies-management']);
-    });
-  }
-}
-
----MovieHTML---
+---MoviesManagementComponent---
 import { Component, OnInit } from '@angular/core';
 import { NgForm } from '@angular/forms';
 import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
@@ -357,7 +239,7 @@ export class MovieService {
   }
 }
 
----MovirDAl---
+---MovieDAl---
 using Book_My_Show_DAL.Interfaces;
 using Book_My_Show_Entities;
 using Dapper;
@@ -578,4 +460,4 @@ namespace Book_My_Show_Entities
 }
 
 
-I have provided the code for EditMOvieHTML ,EditMovieComponent,MovieHTML, MOvieComponent, MOvieService, MovieDAL, MOVIE Entitie. Correct the Release date as the date format in the Edit HTML And MOvie Entites Mismatch Hence the binding is not possible. Also correct the div in edit for the theme photo it should take a string as file name and return it to the data base.
+I have provided the code for MovieHTML, MovieComponent, MovieService, MovieDAL, MOVIE Entitie. Upadte the above code for edit modal. As it is not hitting the webAPI.
