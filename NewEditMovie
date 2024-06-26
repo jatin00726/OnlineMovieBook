@@ -1,0 +1,181 @@
+To address the issues with the release date format mismatch and the theme photo handling, we'll make a few adjustments in the `EditMovieHTML`, `EditMovieComponent`, and `MovieEntities`. Specifically, we'll ensure the date format is consistent, and we'll handle the theme photo filename properly.
+
+### EditMovieHTML
+We'll update the input field for `releaseDate` to ensure it's formatted correctly and modify the input for `themePhotoPath` to handle the file name as a string.
+
+```html
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Edit Movie</h5>
+        <form (ngSubmit)="onSubmit()" #editForm="ngForm">
+            <div class="mb-3">
+                <label for="name" class="form-label">Name</label>
+                <input type="text" class="form-control" id="name" name="name" [(ngModel)]="movie.name" required>
+            </div>
+            <div class="mb-3">
+                <label for="imdbRating" class="form-label">IMDb Rating</label>
+                <select class="form-select" id="imdbRating" name="imdbRating" [(ngModel)]="movie.imdbRating" required>
+                    <option value="1">1 Star</option>
+                    <option value="2">2 Stars</option>
+                    <option value="3">3 Stars</option>
+                    <option value="4">4 Stars</option>
+                    <option value="5">5 Stars</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="category" class="form-label">Category</label>
+                <select class="form-select" id="category" name="category" [(ngModel)]="movie.categoryId" required>
+                    <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="genre" class="form-label">Genre</label>
+                <select class="form-select" id="genre" name="genre" [(ngModel)]="movie.genreId" required>
+                    <option *ngFor="let genre of genres" [value]="genre.id">{{ genre.name }}</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="releaseDate" class="form-label">Release Date</label>
+                <input type="date" class="form-control" id="releaseDate" name="releaseDate" [(ngModel)]="movie.releaseDate" required>
+            </div>
+            <div class="mb-3">
+                <label for="duration" class="form-label">Duration (minutes)</label>
+                <input type="number" class="form-control" id="duration" name="duration" [(ngModel)]="movie.duration" required>
+            </div>
+            <div class="mb-3">
+                <label for="themePhoto" class="form-label">Theme Photo</label>
+                <input type="file" class="form-control" id="themePhoto" (change)="onFileChange($event)">
+                <input type="hidden" name="themePhotoPath" [(ngModel)]="movie.themePhotoPath">
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+</div>
+```
+
+### EditMovieComponent
+We need to handle the file input change event to set the `themePhotoPath` correctly.
+
+```typescript
+import { Component, OnInit } from '@angular/core';
+import { ActivatedRoute, Router } from '@angular/router';
+import { CategoryService } from '../../services/category.service';
+import { GenreService } from '../../services/genre.service';
+import { MovieService } from '../../services/movie.service';
+
+@Component({
+  selector: 'app-edit-movie',
+  templateUrl: './edit-movie.component.html',
+  styleUrls: ['./edit-movie.component.css']
+})
+export class EditMovieComponent implements OnInit {
+  movie: any = {}; // Object to hold movie data
+  categories: any[] = [];
+  genres: any[] = [];
+  selectedFile: File | null = null;
+
+  constructor(
+    private movieService: MovieService,
+    private categoryService: CategoryService,
+    private genreService: GenreService,
+    private route: ActivatedRoute,
+    private router: Router
+  ) { }
+
+  ngOnInit(): void {
+    this.route.params.subscribe(params => {
+      this.movie = +params['id'];
+      this.loadMovieDetails();
+    });
+    this.loadCategories();
+    this.loadGenres();
+  }
+
+  loadMovieDetails(): void {
+    this.movieService.getMovie(this.movie.id).subscribe((data: any) => {
+      this.movie = data;
+    });
+  }
+
+  loadCategories(): void {
+    this.categoryService.getCategories().subscribe(
+      categories => {
+        this.categories = categories;
+      },
+      error => {
+        console.error('Error loading categories:', error);
+      }
+    );
+  }
+
+  loadGenres(): void {
+    this.genreService.getGenres().subscribe(
+      genres => {
+        this.genres = genres;
+      },
+      error => {
+        console.error('Error loading genres:', error);
+      }
+    );
+  }
+
+  onFileChange(event: any): void {
+    const file = event.target.files[0];
+    if (file) {
+      this.selectedFile = file;
+      this.movie.themePhotoPath = file.name; // Update themePhotoPath with the file name
+    }
+  }
+
+  onSubmit(): void {
+    if (this.selectedFile) {
+      const formData = new FormData();
+      formData.append('file', this.selectedFile);
+      this.movieService.uploadImage(formData).subscribe(() => {
+        this.saveMovie();
+      });
+    } else {
+      this.saveMovie();
+    }
+  }
+
+  saveMovie(): void {
+    this.movieService.editMovie(this.movie).subscribe(() => {
+      this.router.navigate(['/movies-management']);
+    });
+  }
+}
+```
+
+### MovieEntities
+We'll make sure the release date is correctly represented as a `DateTime`.
+
+```csharp
+using System;
+using System.ComponentModel.DataAnnotations;
+
+namespace Book_My_Show_Entities
+{
+    public class Movie
+    {
+        [Key]
+        public int? Id { get; set; }
+
+        public string Name { get; set; }
+
+        public decimal ImdbRating { get; set; }
+
+        public string Category { get; set; }
+
+        public string Genre { get; set; }
+
+        public DateTime ReleaseDate { get; set; }
+
+        public int Duration { get; set; }
+
+        public string ThemePhotoPath { get; set; }
+    }
+}
+```
+
+These changes ensure the release date is correctly formatted and the theme photo filename is properly handled and sent to the backend for storage.
