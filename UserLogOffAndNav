@@ -1,0 +1,328 @@
+---AdminHTML---
+<div class="container-fluid">
+  <div class="row">
+    <!-- Sidebar -->
+    <nav id="sidebarMenu" class="sidebar">
+      <div class="position-sticky">
+        <ul class="nav flex-column">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" routerLink="/admin" *ngIf="isAuthenticated()">
+              Dashboard
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/movies" *ngIf="isAuthenticated()">
+              Manage Movies
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/theatres" *ngIf="isAuthenticated()">
+              Manage Theatres
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/admin/shows" *ngIf="isAuthenticated()">
+              Manage Shows
+            </a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+
+    <!-- Main content -->
+    <main id="mainContent" class="main-content">
+      <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom tran">
+        <button class="toggle-button" (click)="toggleSidebar()">☰</button>
+        <h1 class="h2">Admin Dashboard</h1>
+        <!-- <button class="btn btn-danger" (click)="logout()">Logout</button> -->
+        <ul class="navbar-nav navbar-right">
+          <li *ngIf="isAuthenticated()">
+            <button class="btn btn-danger" (click)="logout()">Log off</button>
+          </li>
+        </ul>
+      </div>
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>
+
+---AdminDashboardComponent---
+import { Component } from '@angular/core';
+import { Router } from '@angular/router';
+import { AuthService } from '../../services/auth.service'; // Adjust the path as necessary
+
+@Component({
+  selector: 'app-admin-dashboard',
+  templateUrl: './admin-dashboard.component.html',
+  styleUrl: './admin-dashboard.component.css'
+})
+export class AdminDashboardComponent {
+  constructor(private authService: AuthService, private router: Router) {}
+
+  logout(): void {
+    this.authService.logout().subscribe(() => {
+      this.router.navigate(['/login']);
+      
+    });
+  }
+  toggleSidebar() {
+    const sidebar = document.getElementById('sidebarMenu');
+    const mainContent = document.getElementById('mainContent');
+    if (sidebar && mainContent) {
+      sidebar.classList.toggle('collapsed');
+      mainContent.classList.toggle('collapsed');
+    }
+  }
+  isAuthenticated(): boolean {
+    return this.authService.isAuthenticated() && this.authService.isAdmin();
+  }
+  getUserRole(): string | null {
+    return this.authService.getUserRole();
+  }
+
+  // isAdmin(): boolean{
+  //   const userRole = this.authService.getUserRole();
+  //   return userRole === 'Admin';
+  // }
+  
+}
+
+---UserDasboard---
+<div class="container-fluid">
+    <div class="row">
+      <nav class="col-md-3 col-lg-2 d-md-block bg-light sidebar">
+        <div class="position-sticky">
+          <ul class="nav flex-column">
+            <li class="nav-item">
+              <a class="nav-link active" aria-current="page" routerLink="/admin">
+                Home
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/movies">
+                My Bookings
+              </a>
+            </li>
+            <!-- <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/theatres">
+                Manage Theatres
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" routerLink="/admin/shows">
+                Manage Shows
+              </a>
+            </li> -->
+          </ul>
+        </div>
+      </nav>
+  
+      <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+          <h1 class="h1">Latest in the Box Office!</h1>
+        </div>
+        <div class="container mt-4">
+            <div class="row">
+                <div class="col-md-4" *ngFor="let movie of movies">
+                    <div class="card mb-4 shadow-sm">
+                        <img
+                        [src]="getImagePath(movie.themePhotoPath)"
+                        class="card-img-top"
+                        alt="{{movie.name}}"
+                        (click)="navigateToMovieDetails(movie)"
+                        style="cursor:pointer;">
+                        <div class="card-body">
+                            <h5 class="card-title">{{movie.name}}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <router-outlet></router-outlet>
+      </main>
+    </div>
+  </div>
+
+---UserComponent---
+import { Component } from '@angular/core';
+import {MovieService} from '../../services/movie.service';
+import { Router } from '@angular/router';
+import { NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { MovieDetailModalComponent } from '../movie-detail-modal/movie-detail-modal.component';
+
+@Component({
+  selector: 'app-user-dashboard',
+  templateUrl: './user-dashboard.component.html',
+  styleUrl: './user-dashboard.component.css'
+})
+export class UserDashboardComponent {
+  movies: any[]=[];
+
+  constructor(
+    private movieService: MovieService,
+    private router: Router,
+    private modalService: NgbModal
+  ){}
+
+  ngOnInit(): void{
+    this.loadMovies();
+  }
+
+  loadMovies(): void{
+    this.movieService.getMovies().subscribe(movies=>{
+      this.movies=movies;
+    });
+  }
+
+  navigateToMovieDetails(movie: any):void{
+    const modalRef = this.modalService.open(MovieDetailModalComponent);
+    modalRef.componentInstance.movie=movie;
+    console.log(movie);
+    // this.router.navigate(['/movie-details', movieId]);
+    }
+    getImagePath(themePhotoPath: string): string {
+      const pathParts = themePhotoPath.split('/');
+      const fileName = pathParts[pathParts.length - 1];
+      return `assets/FileUpload/${fileName}`;
+    }
+}
+
+---Auth-Guard---
+import { Component } from '@angular/core';
+import { Injectable } from '@angular/core';
+import { CanActivate, Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+@Component({
+  selector: 'app-auth-guard',
+  templateUrl: './auth-guard.component.html',
+  styleUrl: './auth-guard.component.css'
+})
+export class AuthGuardComponent implements CanActivate{
+  constructor(private authService: AuthService, private router: Router) {}
+
+  canActivate(): boolean {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return false;
+    }
+    return true;
+  }
+}
+
+---AccountController---
+using Book_My_Show_DAL.Context;
+using Book_My_Show_Entities;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Web.Providers.Entities;
+using System.Collections.Generic;
+using System.Security.Claims;
+using System;
+
+namespace Book_My_Show.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class AccountController : ControllerBase
+    {
+        private AccountContext db = new AccountContext();
+        [HttpPost("Login")]
+        public async Task<ActionResult> Login(UserModel user)
+        {
+
+            var result = GetUserbyNameandPassword(user);
+            if (result == null)
+            {
+                return Unauthorized("Invalid Credentials");
+            }
+            //if (result.)
+            //{
+            //    return Ok(new { Message = result });
+            //}
+            var claims = new List<Claim> {
+                new Claim(ClaimTypes.NameIdentifier, Convert.ToString(result.UserId)),
+                new Claim(ClaimTypes.Name, result.Username),
+                new Claim(ClaimTypes.Role, result.Role)
+            };
+            //Initialize a new instance of the ClaimsIdentity with the claims and authentication scheme    
+            var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+            //Initialize a new instance of the ClaimsPrincipal with ClaimsIdentity    
+            var principal = new ClaimsPrincipal(identity);
+
+            //SignInAsync is a Extension method for Sign in a principal for the specified scheme.    
+            await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, new AuthenticationProperties());
+            return Ok(new { Role = result.Role });
+        }
+        [HttpPost("CreateUser")]
+
+        public async Task<ActionResult> CreateUser(UserModel user)
+        {
+
+            var result = AddUser(user);
+            //if (!result.Success)
+            //{
+            //    return BadRequest(result.Message);
+            //}            
+            return Ok(new { UserId = result.UserId, Message = result });
+        }
+
+        [HttpPost("CreateAdmin")]
+
+        public async Task<ActionResult> CreateAdmin(UserModel user)
+        {
+
+            var result = AddAdmin(user);
+            //if (!result.Success)
+            //{
+            //    return BadRequest(result.Message);
+            //}
+            return Ok(new { UserId = result.UserId, Message = result });
+        }
+
+        [HttpGet("CreateUser")]
+        public UserModel GetUserbyNameandPassword(UserModel user)
+        {
+            return db.Users.FirstOrDefault(u => u.Username == user.Username && u.Password == user.Password);
+        }
+
+        [HttpGet("Adduser")]
+        public UserModel AddUser(UserModel objUser)
+        {
+            objUser.Role = "User";
+            db.Users.Add(objUser);
+            db.SaveChanges();
+            return objUser;
+        }
+
+        [HttpGet("Addadmin")]
+        public UserModel AddAdmin(UserModel objUser)
+        {
+            objUser.Role = "Admin";
+            db.Users.Add(objUser);
+            db.SaveChanges();
+            return objUser;
+        }
+
+        [HttpGet("Logout")]
+        public async Task<IActionResult> LogOut()
+        {
+            //SignOutAsync is Extension method for SignOut    
+            await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            //Redirect to home page    
+            return Ok(new { message = "User LOgged Out" });
+        }
+
+    }
+}
+
+
+I have given the reference Of the AdminDashboard where the log off button and the Nav BAR is put. Implement the same on the User Dashboard. The user dashboard should have nav and also the log off button.
+
