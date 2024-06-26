@@ -161,4 +161,5 @@ export class MoviesManagementComponent implements OnInit {
   
 }
 
-2024-06-27 00:00:00.000
+
+ The specified value "07/18/2008" does not conform to the required format, "yyyy-MM-dd".
