@@ -1,0 +1,135 @@
+---movie-detail-modalHTML---
+<div class="modal-header">
+    <h4 class="modal-title">{{ movie?.name }}</h4>
+    <button type="button" class="close" aria-label="Close" (click)="dismiss()">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+    <p><strong>IMDb Rating:</strong> {{ movie?.imdbRating }}</p>
+    <p><strong>Duration:</strong> {{ movie?.duration }}</p>
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-primary" (click)="bookTickets()">Book Tickets</button>
+  </div>
+
+
+---MovieDetailModalComponent---
+
+import { Component, Input } from '@angular/core';
+import { NgbActiveModal, NgbModal } from '@ng-bootstrap/ng-bootstrap';
+import { Router } from '@angular/router';
+import { CityModalComponent } from '../city-modal/city-modal.component';
+
+@Component({
+  selector: 'app-movie-detail-modal',
+  templateUrl: './movie-detail-modal.component.html',
+  styleUrls: ['./movie-detail-modal.component.css']
+})
+export class MovieDetailModalComponent {
+  @Input() movie: any;
+
+  constructor(
+    public activeModal: NgbActiveModal,
+    private modalService: NgbModal,
+    private router: Router
+  ) {}
+
+  dismiss(): void {
+    this.activeModal.dismiss();
+  }
+
+  bookTickets(): void {
+    this.activeModal.close();
+    const modalRef = this.modalService.open(CityModalComponent);
+    modalRef.componentInstance.movie = this.movie;
+    modalRef.result.then((result: {city:string,show:any, seats: number[]}) => {
+      console.log('selected city:',result.city);
+      console.log('selected show:',result.show);
+      console.log('selected seats:',result.seats);
+      this.router.navigate(['/',{movieId:this.movie.id,city: result.city,showId: result.show.id, seats: result.seats.join(',')}]);
+    }, ()=>{
+
+    });
+  }
+}
+
+---AuthGuardComponent---
+
+import { Component } from '@angular/core';
+import { Injectable } from '@angular/core';
+import { CanActivate, Router } from '@angular/router';
+import { AuthService } from '../services/auth.service';
+
+@Injectable({
+  providedIn: 'root'
+})
+@Component({
+  selector: 'app-auth-guard',
+  templateUrl: './auth-guard.component.html',
+  styleUrl: './auth-guard.component.css'
+})
+export class AuthGuardComponent implements CanActivate{
+  constructor(private authService: AuthService, private router: Router) {}
+
+  canActivate(): boolean {
+    if (!this.authService.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return false;
+    }
+    return true;
+  }
+}
+
+---App-Routing-Module---
+
+import { NgModule } from '@angular/core';
+import { RouterModule, Routes } from '@angular/router';
+import { AdminDashboardComponent } from './admin/admin-dashboard/admin-dashboard.component';
+import { MoviesManagementComponent } from './admin/movies-management/movies-management.component';
+import { TheatresManagementComponent } from './admin/theatres-management/theatres-management.component';
+import { ShowsManagementComponent } from './admin/shows-management/shows-management.component';
+import { UserDashboardComponent } from './user/user-dashboard/user-dashboard.component';
+import { MovieListComponent } from './user/movie-list/movie-list.component';
+import { MovieDetailComponent } from './user/movie-detail/movie-detail.component';
+//import { BookingComponent } from './user/booking/booking.component';
+import { BookingHistoryComponent } from './user/booking-history/booking-history.component';
+import { LandingComponent } from './landing/landing.component';
+import { LoginComponent } from './auth/login/login.component';
+import { RegisterComponent } from './auth/register/register.component';
+import { AddMovieComponent } from './admin/add-movie/add-movie.component';
+//import { EditMovieComponent } from './admin/edit-movie/edit-movie.component';
+import { AuthGuardComponent } from './auth-guard/auth-guard.component';
+import { BookingDetailsModalComponent } from './user/booking-details-modal/booking-details-modal.component';
+
+const routes: Routes = [
+  { path: '', component: LoginComponent },
+  { path: 'register', component: RegisterComponent },
+  { path: 'admin', component: AdminDashboardComponent, children: [
+    { path: 'movies', component: MoviesManagementComponent, canActivate :[AuthGuardComponent] },
+    { path: 'theatres', component: TheatresManagementComponent,canActivate :[AuthGuardComponent] },
+    { path: 'shows', component: ShowsManagementComponent, canActivate :[AuthGuardComponent] },
+  ]},
+  { path: 'user', component: UserDashboardComponent,children: [
+    { path: 'movies', component: MovieListComponent },
+    { path: 'movies/:id', component: MovieDetailComponent },
+    //{ path: 'booking', component: BookingComponent },
+    { path: 'history', component: BookingHistoryComponent },
+  ]},  
+  {path: 'admin/movies-managrment',component:MoviesManagementComponent,canActivate :[AuthGuardComponent]},
+  {path: 'admin/add-movie',component:AddMovieComponent, canActivate :[AuthGuardComponent] },
+  //{path: 'admin/movies/edit',component:EditMovieComponent, canActivate :[AuthGuardComponent] },
+  { path: '**', redirectTo: '' },
+
+
+
+];
+
+@NgModule({
+  imports: [RouterModule.forRoot(routes)],
+  exports: [RouterModule]
+})
+export class AppRoutingModule { }
+
+
+  Add the Authentication using the AuthGaurd when the user logouts no one should be able to access the booktickets button in the movie-detail-modalHTML.
