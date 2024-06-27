@@ -253,3 +253,148 @@ export class TheatresManagementComponent implements OnInit {
 - **onCityChange**: Handles the city change event:
   - Updates `selectedCity` with the new city.
   - Calls `loadTheatresByCity` with the selected city.
+
+
+-----------------------------------------------------------------------------------------------------
+using Book_My_Show_DAL.Interfaces;
+using Book_My_Show_Entities;
+using Dapper;
+using Microsoft.Extensions.Configuration;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Threading.Tasks;
+
+namespace Book_My_Show_DAL.Implementations
+{
+    public class TheatreServices : ITheatreServices
+    {
+        private IDbConnection _db;
+
+        public TheatreServices(IConfiguration configuration)
+        {
+            _db = new SqlConnection(configuration.GetConnectionString("DefaultConnection"));
+        }
+
+        public void Add(Theatre theatre)
+        {
+            try
+            {
+                var sqlQuery = "INSERT INTO Theatre (Name,City) VALUES (@Name,@City)";
+                _db.Execute(sqlQuery, theatre);
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public void Delete(int Id)
+        {
+            try
+            {
+                var sqlQuery = "DELETE FROM Theatre where Id = @Id";
+                _db.Execute(sqlQuery, new { Id });
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<List<Theatre>> GetAll()
+        {
+            try
+            {
+                var sqlQuery = "SELECT * FROM Theatre";
+                return _db.Query<Theatre>(sqlQuery).ToList();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<List<Theatre>> GetByCity(string City)
+        {
+            try
+            {
+                var sqlQuery = "SELECT * FROM Theatre where City = @City";
+                return _db.Query<Theatre>(sqlQuery, new { @City = City }).ToList();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<Theatre> GetById(int Id)
+        {
+            try
+            {
+                var sqlQuery = "SELECT * FROM Theatre where Id = @Id";
+                return _db.Query<Theatre>(sqlQuery, new { @Id = Id }).SingleOrDefault();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<int> Update(Theatre theatre)
+        {
+            try
+            {
+                var sqlQuery = "UPDATE Theatre SET Name = @Name,City=@City where Id = @Id";
+                var res = _db.Execute(sqlQuery, theatre);
+                if (res != null)
+                {
+                    return 1;
+                }
+                return 0;
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+
+        public async Task<List<string>> GetCities()
+        {
+            try
+            {
+                var sqlQuery = "SELECT DISTINCT City FROM Theatre";
+                return _db.Query<string>(sqlQuery).ToList();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+
+        public async Task<List<Theatre>> GetTheatre(string City, int movieId)
+        {
+            try { 
+            var queryCity = (City == "-1") ? null : City;
+            var sqlQuery = @"
+                SELECT DISTINCT T.Id, T.Name, T.City
+                FROM Theatre AS T
+                INNER JOIN Show AS S
+                ON S.TheatreId = T.Id
+                WHERE (@City IS NULL OR T.City = @City) 
+                AND (@MovieId IS NULL OR S.MovieId = @MovieId)";
+
+            return _db.Query<Theatre>(sqlQuery, new { @City = queryCity, @MovieId = movieId }).ToList();
+            }
+            catch (Exception ex)
+            {
+                throw ex;
+            }
+        }
+    }
+}
+
+
